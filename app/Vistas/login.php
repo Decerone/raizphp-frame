@@ -1,0 +1,4 @@
+<h1><?= htmlspecialchars($titulo) ?></h1>
+<?php if ($error): ?><div class="alerta alerta-error"><?= $error ?></div><?php endif; ?>
+<form method="POST" action="<?= $urlBase ?>/login"><div class="campo-formulario"><label class="etiqueta">Email</label><input type="email" name="email" class="entrada" required></div><div class="campo-formulario"><label class="etiqueta">Contraseña</label><div style="position:relative;display:flex;align-items:center"><input type="password" id="password" name="password" class="entrada" required style="padding-right:40px"><span onclick="togglePassword('password','togglePassword')" style="position:absolute;right:10px;cursor:pointer;user-select:none" id="togglePassword">👁️</span></div></div><?= \App\Nucleo\HelperCsrf::campoOculto() ?><button type="submit" class="boton">Ingresar</button></form>
+<p class="mt-2"><a href="<?= $urlBase ?>/registro">Crear cuenta</a> | <a href="<?= $urlBase ?>/recuperar">¿Olvidaste tu contraseña?</a></p>

@@ -1,0 +1,324 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+$directorioRaiz = __DIR__;
+require_once $directorioRaiz . '/app/Nucleo/Autocargador.php';
+App\Nucleo\Autocargador::registrar();
+require_once $directorioRaiz . '/app/Nucleo/Aplicacion.php';
+
+$app = new App\Nucleo\Aplicacion($directorioRaiz);
+$comando = $argv[1] ?? 'ayuda';
+$subcomando = $argv[2] ?? null;
+$argumento = $argv[3] ?? null;
+
+define('C_VERDE', "\033[32m");
+define('C_ROJO', "\033[31m");
+define('C_AMARILLO', "\033[33m");
+define('C_AZUL', "\033[34m");
+define('C_MORADO', "\033[35m");
+define('C_CYAN', "\033[36m");
+define('C_RESET', "\033[0m");
+define('C_NEGRITA', "\033[1m");
+
+echo PHP_EOL . C_VERDE . C_NEGRITA;
+echo "  🌱  RaízPHP CLI v2.1" . PHP_EOL;
+echo C_RESET . C_CYAN . "  " . str_repeat('─', 35) . C_RESET . PHP_EOL . PHP_EOL;
+
+$resultados = [];
+
+switch ($comando) {
+    case 'ayuda': case '--help': case '-h':
+        $resultados = mostrarAyuda(); break;
+
+    case 'crear:controlador':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
+        $resultados = crearControlador($directorioRaiz, $subcomando); break;
+    case 'crear:modelo':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
+        $resultados = crearModelo($directorioRaiz, $subcomando); break;
+    case 'crear:vista':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
+        $resultados = crearVista($directorioRaiz, $subcomando); break;
+    case 'crear:middleware':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
+        $resultados = crearMiddleware($directorioRaiz, $subcomando); break;
+    case 'crear:ruta':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
+        $resultados = crearRuta($directorioRaiz, $subcomando); break;
+    case 'crear:api':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
+        $resultados = crearApi($directorioRaiz, $subcomando); break;
+    case 'crear:admin':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
+        $resultados = crearAdmin($directorioRaiz, $subcomando); break;
+    case 'crear:migracion':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
+        $resultados = crearMigracion($directorioRaiz, $subcomando); break;
+    case 'crear:seeder':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
+        $resultados = crearSeeder($directorioRaiz, $subcomando); break;
+
+    case 'migrar': $gestor = new App\Nucleo\GestorMigraciones($directorioRaiz); $resultados = $gestor->migrar(); break;
+    case 'revertir': $gestor = new App\Nucleo\GestorMigraciones($directorioRaiz); $resultados = $gestor->revertir(); break;
+    case 'migrar:estado': $resultados = migrarEstado($directorioRaiz); break;
+    case 'migrar:fuerza': $gestor = new App\Nucleo\GestorMigraciones($directorioRaiz); $resultados = $gestor->migrar(true); break;
+    case 'seed': $resultados = ejecutarSeeders($directorioRaiz); break;
+
+    case 'db:respaldar': $resultados = respaldarBD($directorioRaiz); break;
+    case 'db:restaurar':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el archivo.".C_RESET]; break; }
+        $resultados = restaurarBD($directorioRaiz, $subcomando); break;
+
+    case 'cache:limpiar': (new App\Nucleo\Cache())->limpiar(); $resultados = [C_VERDE."✅ Caché limpiada.".C_RESET]; break;
+    case 'cache:estado': $resultados = cacheEstado($directorioRaiz); break;
+
+    case 'lista:rutas': $resultados = listarRutas($directorioRaiz); break;
+    case 'lista:middlewares': $resultados = listarMiddlewares($directorioRaiz); break;
+    case 'lista:controladores': $resultados = listarControladores($directorioRaiz); break;
+
+    case 'clave:generar': $resultados = generarClave($directorioRaiz); break;
+    case 'log:limpiar': $resultados = limpiarLogs($directorioRaiz); break;
+    case 'log:ver': $resultados = verLogs($directorioRaiz, $subcomando ?? '20'); break;
+
+    case 'usuario:crear': $resultados = crearUsuario(); break;
+    case 'usuario:rol':
+        if (!$subcomando || !$argumento) { $resultados = [C_ROJO."❌ Uso: php raizphp usuario:rol email rol".C_RESET]; break; }
+        $resultados = cambiarRol($subcomando, $argumento); break;
+    case 'token:generar':
+        if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el email.".C_RESET]; break; }
+        $resultados = generarToken($subcomando); break;
+
+    case 'servir':
+        $puerto = $subcomando ?? '8000';
+        echo C_CYAN."🚀 Servidor en http://localhost:$puerto".C_RESET.PHP_EOL;
+        echo C_AMARILLO."Presiona Ctrl+C para detener.".C_RESET.PHP_EOL;
+        exec("php -S localhost:$puerto -t ".$directorioRaiz."/public"); exit;
+
+    case 'proyecto:info': $resultados = infoProyecto($directorioRaiz); break;
+    case 'proyecto:entorno': $resultados = cambiarEntorno($directorioRaiz, $subcomando); break;
+    case 'doc:generar': $resultados = [C_VERDE."✅ Documentación en: public/documentacion.php".C_RESET]; break;
+
+    default:
+        $resultados = [C_ROJO."❌ Comando no reconocido: $comando".C_RESET,"","Usa ".C_VERDE."php raizphp ayuda".C_RESET];
+}
+
+foreach ($resultados as $linea) echo $linea . PHP_EOL;
+echo PHP_EOL . C_CYAN . "  " . str_repeat('─', 35) . C_RESET . PHP_EOL;
+echo C_VERDE . "  ✅  Completado." . C_RESET . PHP_EOL . PHP_EOL;
+
+
+// ==================== FUNCIONES ====================
+
+function mostrarAyuda(): array {
+    return [
+        C_MORADO.C_NEGRITA."📚 COMANDOS".C_RESET,"",
+        C_CYAN."Crear:".C_RESET,
+        "  crear:controlador <Nombre>","  crear:modelo <Nombre>","  crear:vista <nombre>",
+        "  crear:middleware <Nombre>","  crear:ruta <nombre>","  crear:api <Nombre>",
+        "  crear:admin <Nombre>","  crear:migracion <nombre>","  crear:seeder <nombre>","",
+        C_CYAN."BD:".C_RESET,
+        "  migrar  revertir  migrar:estado  migrar:fuerza  seed  db:respaldar  db:restaurar <f>","",
+        C_CYAN."Caché/Logs:".C_RESET,
+        "  cache:limpiar  cache:estado  log:limpiar  log:ver [n]","",
+        C_CYAN."Listar:".C_RESET,
+        "  lista:rutas  lista:middlewares  lista:controladores","",
+        C_CYAN."Usuarios:".C_RESET,
+        "  usuario:crear  usuario:rol <email> <rol>  token:generar <email>  clave:generar","",
+        C_CYAN."Utilidades:".C_RESET,
+        "  servir [puerto]  proyecto:info  proyecto:entorno [e]  doc:generar",
+    ];
+}
+
+function crearControlador(string $dir, string $nombre): array {
+    $nombre = ucfirst($nombre);
+    $archivo = $dir."/app/Controladores/{$nombre}Controlador.php";
+    if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe.".C_RESET];
+    $c = "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Controladores;\n\nuse App\\Nucleo\\ControladorBase;\n\nclass {$nombre}Controlador extends ControladorBase\n{\n    public function index(): void\n    {\n        \$this->renderizar('".strtolower($nombre)."/index', ['titulo' => '$nombre']);\n    }\n}\n";
+    file_put_contents($archivo, $c);
+    @mkdir($dir."/app/Vistas/".strtolower($nombre), 0775, true);
+    file_put_contents($dir."/app/Vistas/".strtolower($nombre)."/index.php", "<h1><?= \$titulo ?></h1>");
+    return [C_VERDE."✅ Controlador: $archivo".C_RESET];
+}
+
+function crearModelo(string $dir, string $nombre): array {
+    $nombre = ucfirst($nombre);
+    $archivo = $dir."/app/Modelos/{$nombre}.php";
+    if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe.".C_RESET];
+    $c = "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Modelos;\n\nuse App\\Nucleo\\Modelo;\n\nclass $nombre extends Modelo\n{\n    protected string \$tabla = '".strtolower($nombre)."s';\n}\n";
+    file_put_contents($archivo, $c);
+    return [C_VERDE."✅ Modelo: $archivo".C_RESET];
+}
+
+function crearVista(string $dir, string $nombre): array {
+    $archivo = $dir."/app/Vistas/{$nombre}.php";
+    if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe.".C_RESET];
+    file_put_contents($archivo, "<h1><?= \$titulo ?? '$nombre' ?></h1>\n");
+    return [C_VERDE."✅ Vista: $archivo".C_RESET];
+}
+
+function crearMiddleware(string $dir, string $nombre): array {
+    $nombre = ucfirst($nombre);
+    $archivo = $dir."/app/Middleware/Middleware{$nombre}.php";
+    if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe.".C_RESET];
+    $c = "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Middleware;\n\nuse App\\Nucleo\\Middleware;\n\nclass Middleware$nombre extends Middleware\n{\n    public function manejar(array \$peticion, callable \$siguiente): mixed\n    {\n        return \$siguiente(\$peticion);\n    }\n}\n";
+    file_put_contents($archivo, $c);
+    return [C_VERDE."✅ Middleware: $archivo".C_RESET];
+}
+
+function crearRuta(string $dir, string $nombre): array {
+    $archivo = $dir."/app/rutas/{$nombre}.php";
+    if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe.".C_RESET];
+    file_put_contents($archivo, "<?php\ndeclare(strict_types=1);\n\nuse App\\Nucleo\\Enrutador;\n\nreturn function (Enrutador \$enrutador): void {\n    \$enrutador->agregarRuta('GET', '/$nombre', '{$nombre}Controlador@index');\n};\n");
+    return [C_VERDE."✅ Ruta: $archivo".C_RESET];
+}
+
+function crearApi(string $dir, string $nombre): array {
+    $nombre = ucfirst($nombre);
+    @mkdir($dir."/app/Controladores/Api", 0775, true);
+    $archivo = $dir."/app/Controladores/Api/{$nombre}ApiControlador.php";
+    if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe.".C_RESET];
+    file_put_contents($archivo, "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Controladores\\Api;\n\nuse App\\Nucleo\\ControladorBase;\n\nclass {$nombre}ApiControlador extends ControladorBase\n{\n    public function lista(): void\n    {\n        \$this->respuestaJson(['data' => []]);\n    }\n}\n");
+    return [C_VERDE."✅ API: $archivo".C_RESET];
+}
+
+function crearAdmin(string $dir, string $nombre): array {
+    $nombre = ucfirst($nombre);
+    @mkdir($dir."/app/Controladores/Admin", 0775, true);
+    $archivo = $dir."/app/Controladores/Admin/{$nombre}AdminControlador.php";
+    if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe.".C_RESET];
+    file_put_contents($archivo, "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Controladores\\Admin;\n\nuse App\\Nucleo\\ControladorBase;\n\nclass {$nombre}AdminControlador extends ControladorBase\n{\n    public function lista(): void\n    {\n        \$this->renderizar('admin/".strtolower($nombre)."/lista', ['titulo' => '$nombre']);\n    }\n}\n");
+    return [C_VERDE."✅ Admin: $archivo".C_RESET];
+}
+
+function crearMigracion(string $dir, string $nombre): array {
+    @mkdir($dir."/app/Migraciones", 0775, true);
+    $ts = date('Y_m_d_His');
+    $archivo = $dir."/app/Migraciones/{$ts}_{$nombre}.php";
+    file_put_contents($archivo, "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Migraciones;\n\nuse App\\Nucleo\\Migracion;\n\nclass {$ts}_{$nombre} extends Migracion\n{\n    public function arriba(): void {}\n    public function abajo(): void {}\n}\n");
+    return [C_VERDE."✅ Migración: $archivo".C_RESET];
+}
+
+function crearSeeder(string $dir, string $nombre): array {
+    $nombre = ucfirst($nombre);
+    @mkdir($dir."/app/Seeders", 0775, true);
+    $archivo = $dir."/app/Seeders/{$nombre}Seeder.php";
+    if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe.".C_RESET];
+    file_put_contents($archivo, "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Seeders;\n\nuse App\\Nucleo\\Seeder;\n\nclass {$nombre}Seeder extends Seeder\n{\n    public function ejecutar(): void {}\n}\n");
+    return [C_VERDE."✅ Seeder: $archivo".C_RESET];
+}
+
+function ejecutarSeeders(string $dir): array {
+    $r = [C_CYAN."🌱 Seeders...".C_RESET];
+    $seeders = glob($dir.'/app/Seeders/*.php');
+    if (empty($seeders)) return [C_AMARILLO."⚠️ Sin seeders.".C_RESET];
+    foreach ($seeders as $f) { require_once $f; $c = "App\\Seeders\\".pathinfo($f, PATHINFO_FILENAME); if (class_exists($c)) { (new $c())->ejecutar(); $r[] = C_VERDE."   ✅ ".pathinfo($f, PATHINFO_FILENAME).C_RESET; } }
+    return $r;
+}
+
+function migrarEstado(string $dir): array {
+    $m = glob($dir.'/app/Migraciones/*.php');
+    return [C_CYAN."📊 Migraciones: ".C_AMARILLO.count($m).C_RESET];
+}
+
+function respaldarBD(string $dir): array {
+    $cfg = require $dir.'/config/base_datos.php';
+    @mkdir($dir.'/almacenamiento/backups', 0775, true);
+    $f = $dir.'/almacenamiento/backups/backup_'.date('Ymd_His').'.sql';
+    exec("mysqldump -h{$cfg['host']} -u{$cfg['usuario']} ".($cfg['clave']?"-p{$cfg['clave']}":"")." {$cfg['nombre']} > $f 2>/dev/null", $o, $x);
+    return $x===0 ? [C_VERDE."✅ Backup: $f".C_RESET] : [C_ROJO."❌ Error.".C_RESET];
+}
+
+function restaurarBD(string $dir, string $f): array {
+    if (!file_exists($f)) return [C_ROJO."❌ No encontrado.".C_RESET];
+    $cfg = require $dir.'/config/base_datos.php';
+    exec("mysql -h{$cfg['host']} -u{$cfg['usuario']} ".($cfg['clave']?"-p{$cfg['clave']}":"")." {$cfg['nombre']} < $f 2>/dev/null", $o, $x);
+    return $x===0 ? [C_VERDE."✅ Restaurado.".C_RESET] : [C_ROJO."❌ Error.".C_RESET];
+}
+
+function cacheEstado(string $dir): array {
+    $a = glob($dir.'/almacenamiento/cache/*'); $t = count($a); $s = 0;
+    foreach ($a as $f) $s += filesize($f);
+    return [C_CYAN."📊 Caché: ".C_AMARILLO."$t archivos, ".round($s/1024,2)." KB".C_RESET];
+}
+
+function listarRutas(string $dir): array {
+    $r = [C_CYAN."📋 Rutas:".C_RESET];
+    foreach (glob($dir.'/app/rutas/*.php') as $f) {
+        $n = basename($f); $c = file_get_contents($f);
+        preg_match_all("/agregarRuta\('(GET|POST|PUT|DELETE)',\s*'([^']+)'/", $c, $m);
+        $r[] = C_MORADO."  📁 $n".C_RESET;
+        for ($i=0; $i<count($m[0]); $i++) $r[] = "     ".C_AZUL.str_pad($m[1][$i],6).C_RESET." ".$m[2][$i];
+    }
+    return $r;
+}
+
+function listarMiddlewares(string $dir): array {
+    $r = [C_CYAN."📋 Middlewares:".C_RESET];
+    foreach (glob($dir.'/app/Middleware/Middleware*.php') as $f) $r[] = "   📦 ".C_MORADO.basename($f,'.php').C_RESET;
+    return $r;
+}
+
+function listarControladores(string $dir): array {
+    $r = [C_CYAN."📋 Controladores:".C_RESET];
+    foreach ([$dir.'/app/Controladores/', $dir.'/app/Controladores/Admin/', $dir.'/app/Controladores/Api/'] as $d) {
+        foreach (glob($d.'*Controlador.php') as $f) {
+            $t = str_contains($d,'Admin')?'Admin':(str_contains($d,'Api')?'API':'Web');
+            $r[] = "   ".C_AZUL.str_pad("[$t]",8).C_RESET." ".basename($f,'.php');
+        }
+    }
+    return $r;
+}
+
+function generarClave(string $dir): array {
+    $k = bin2hex(random_bytes(32));
+    file_put_contents($dir.'/config/aplicacion.php', preg_replace("/'clave_aplicacion'\s*=>\s*'[^']*'/", "'clave_aplicacion' => '$k'", file_get_contents($dir.'/config/aplicacion.php')));
+    return [C_VERDE."✅ Clave: $k".C_RESET];
+}
+
+function limpiarLogs(string $dir): array {
+    $a = glob($dir.'/almacenamiento/logs/*.log'); foreach ($a as $f) unlink($f);
+    return [C_VERDE."✅ Logs limpiados (".count($a).")".C_RESET];
+}
+
+function verLogs(string $dir, string $n): array {
+    $f = $dir.'/almacenamiento/logs/app.log';
+    if (!file_exists($f)) return [C_AMARILLO."⚠️ Sin logs.".C_RESET];
+    $l = array_slice(file($f), -intval($n));
+    return array_merge([C_CYAN."📋 Log:".C_RESET,""], array_map(fn($x)=> "   ".trim($x), $l));
+}
+
+function crearUsuario(): array {
+    echo C_CYAN."👤 Nuevo usuario".C_RESET.PHP_EOL;
+    echo "Nombre: "; $n=trim(fgets(STDIN));
+    echo "Apellido: "; $a=trim(fgets(STDIN));
+    echo "Email: "; $e=trim(fgets(STDIN));
+    echo "Contraseña: "; $p=trim(fgets(STDIN));
+    echo "Edad: "; $ed=intval(trim(fgets(STDIN)));
+    $db = App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion();
+    $db->insertar('usuarios', ['nombre'=>$n,'apellido'=>$a,'email'=>$e,'password'=>password_hash($p,PASSWORD_BCRYPT),'edad'=>$ed,'rol'=>'usuario']);
+    return [C_VERDE."✅ Usuario: $e".C_RESET];
+}
+
+function cambiarRol(string $e, string $r): array {
+    App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion()->actualizar('usuarios', ['rol'=>$r], "email='$e'");
+    return [C_VERDE."✅ Rol de $e → $r".C_RESET];
+}
+
+function generarToken(string $e): array {
+    $t = bin2hex(random_bytes(32));
+    App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion()->actualizar('usuarios', ['api_token'=>$t], "email='$e'");
+    return [C_VERDE."✅ Token: $t".C_RESET];
+}
+
+function infoProyecto(string $dir): array {
+    $c = require $dir.'/config/aplicacion.php';
+    return [C_CYAN."📋 Proyecto:".C_RESET,"   Nombre: ".C_AMARILLO.($c['nombre']??'N/A').C_RESET,"   Entorno: ".C_AMARILLO.($c['entorno']??'N/A').C_RESET,"   PHP: ".C_AMARILLO.PHP_VERSION.C_RESET];
+}
+
+function cambiarEntorno(string $dir, ?string $e): array {
+    if (!$e) { $c = require $dir.'/config/aplicacion.php'; return [C_CYAN."Entorno: ".C_AMARILLO.($c['entorno']??'N/A').C_RESET]; }
+    file_put_contents($dir.'/config/aplicacion.php', preg_replace("/'entorno'\s*=>\s*'[^']*'/", "'entorno' => '$e'", file_get_contents($dir.'/config/aplicacion.php')));
+    return [C_VERDE."✅ Entorno → $e".C_RESET];
+}

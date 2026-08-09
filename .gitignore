@@ -1,0 +1,13 @@
+/vendor/
+.env
+*.log
+/almacenamiento/logs/*
+!/almacenamiento/logs/.gitkeep
+/almacenamiento/cache/*
+!/almacenamiento/cache/.gitkeep
+/almacenamiento/correos/*
+!/almacenamiento/correos/.gitkeep
+/almacenamiento/intentos/*
+!/almacenamiento/intentos/.gitkeep
+/config/base_datos.php
+/config/aplicacion.php

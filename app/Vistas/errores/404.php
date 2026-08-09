@@ -1,0 +1,1 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>404 - RaízPHP</title><style>body{font-family:system-ui,sans-serif;text-align:center;padding-top:50px}h1{font-size:3rem;color:#dc2626}p{color:#475569}</style></head><body><h1>404</h1><p>Página no encontrada.</p><p><a href="/">Volver al inicio</a></p></body></html>
