@@ -1,0 +1,222 @@
+================================================================================
+                    🌱 LICENCIA RAÍZPHP v1.0
+              Basada en Apache License 2.0
+                    Software Libre
+================================================================================
+
+            Copyright (c) 2026 Decerone - Costa Rica
+
+================================================================================
+                    VERSIÓN EN ESPAÑOL (OFICIAL)
+================================================================================
+
+                    LICENCIA RAÍZPHP v1.0
+
+Términos y condiciones para el uso, reproducción y distribución del
+framework RaízPHP ("El Software").
+
+1. DEFINICIONES
+
+   "El Software" se refiere al framework RaízPHP, incluyendo su código
+   fuente, documentación, archivos de configuración, plantillas, estilos
+   CSS, CLI, y cualquier archivo incluido en el repositorio oficial.
+
+   "El Autor" se refiere a Bryan Campos Abarca conocido como Decerone , creador original de El Software.
+
+   "Contribución" se refiere a cualquier modificación, mejora, traducción,
+   o adición realizada a El Software por cualquier persona o entidad.
+
+   "Obra Derivada" se refiere a cualquier proyecto, aplicación o software
+   que utilice, incluya o se base en El Software.
+
+2. OTORGAMIENTO DE DERECHOS
+
+   Sujeto a los términos de esta Licencia, El Autor otorga a cualquier
+   persona o entidad ("El Usuario") los siguientes derechos:
+
+   ✅ USAR        — Usar El Software para cualquier propósito, incluyendo
+                    uso comercial, educativo, personal o gubernamental.
+
+   ✅ COPIAR      — Hacer copias exactas de El Software.
+
+   ✅ DISTRIBUIR  — Distribuir copias de El Software por cualquier medio,
+                    incluyendo descarga digital, medios físicos, o
+                    inclusión en otros proyectos.
+
+   ✅ MODIFICAR   — Modificar, adaptar, traducir, o crear obras derivadas
+                    de El Software.
+
+   ✅ INCLUIR     — Incorporar El Software en proyectos propietarios,
+                    comerciales, o de código abierto.
+
+   ✅ SUBLICENCIAR— Otorgar sublicencias de El Software o de obras
+                    derivadas bajo términos diferentes.
+
+   Estos derechos son perpetuos, mundiales, irrevocables, no exclusivos
+   y libres de regalías.
+
+3. CONDICIONES OBLIGATORIAS
+
+   El ejercicio de los derechos otorgados está sujeto a las siguientes
+   condiciones:
+
+   3.1 ATRIBUCIÓN — Toda copia, distribución, modificación u obra
+       derivada DEBE incluir de forma visible y clara:
+
+       a) El aviso de copyright original:
+          "Copyright (c) 2026 Decerone - Costa Rica"
+
+       b) El nombre del framework: "RaízPHP"
+
+       c) Un enlace al repositorio oficial:
+          https://github.com/Decerone/raizphp-frame
+
+       d) Esta licencia completa en un archivo LICENSE o LICENSE.txt
+
+   3.2 RECONOCIMIENTO EN DOCUMENTACIÓN — La documentación de cualquier
+       proyecto que utilice El Software DEBE incluir:
+
+       a) Una sección de "Créditos" o "Reconocimientos" que mencione
+          a RaízPHP y a Decerone como autor original.
+
+       b) Ejemplo de texto requerido:
+          "Este proyecto utiliza RaízPHP v2.1, framework PHP creado
+           por Decerone (Costa Rica). https://github.com/Decerone/raizphp-frame"
+
+   3.3 RECONOCIMIENTO PÚBLICO — Si El Software se utiliza en un
+       proyecto público (sitio web, aplicación, servicio), se DEBE:
+
+       a) Incluir un enlace visible al repositorio oficial de RaízPHP.
+
+       b) Mencionar a RaízPHP en la página de "Acerca de", "Créditos",
+          o sección equivalente.
+
+   3.4 NO ELIMINAR AVISOS — No se pueden eliminar ni modificar los
+       avisos de copyright, atribución o licencia incluidos en el
+       código fuente original de El Software.
+
+   3.5 MANTENER LICENCIA — Las obras derivadas pueden tener licencias
+       diferentes, pero los archivos originales de El Software deben
+       mantener esta licencia.
+
+4. EXENCIÓN DE RESPONSABILIDAD
+
+   EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO,
+   EXPRESA O IMPLÍCITA, INCLUYENDO PERO NO LIMITADO A GARANTÍAS DE
+   COMERCIABILIDAD, IDONEIDAD PARA UN PROPÓSITO PARTICULAR, PRECISIÓN,
+   Y NO INFRACCIÓN.
+
+   EN NINGÚN CASO EL AUTOR, LOS TITULARES DEL COPYRIGHT, O LOS
+   CONTRIBUIDORES SERÁN RESPONSABLES POR CUALQUIER RECLAMO, DAÑO,
+   PÉRDIDA, O RESPONSABILIDAD, YA SEA EN UNA ACCIÓN DE CONTRATO,
+   AGRAVIO, NEGLIGENCIA, O CUALQUIER OTRA FORMA LEGAL, QUE SURJA
+   DE O EN CONEXIÓN CON EL SOFTWARE O EL USO U OTRO TIPO DE
+   ACCIONES EN EL SOFTWARE.
+
+5. PATENTES
+
+   Esta licencia no otorga derechos de patente sobre El Software.
+   Si El Usuario posee patentes que cubran El Software, se otorga
+   una licencia de patente no exclusiva, libre de regalías, para
+   usar El Software conforme a esta licencia.
+
+6. TERMINACIÓN
+
+   Esta licencia termina automáticamente si El Usuario incumple
+   cualquiera de las condiciones establecidas. Sin embargo, las
+   licencias otorgadas a terceros que hayan recibido copias de
+   El Usuario no se verán afectadas, siempre que dichos terceros
+   cumplan con esta licencia.
+
+7. ACEPTACIÓN
+
+   El uso, copia, modificación, o distribución de El Software
+   constituye la aceptación de todos los términos y condiciones
+   de esta licencia.
+
+8. VIGENCIA
+
+   Esta licencia es efectiva a partir del 1 de agosto de 2026 y
+   se aplica a todas las versiones de RaízPHP v2.1 y posteriores,
+   hasta que se publique una versión actualizada de esta licencia.
+
+9. LEY APLICABLE
+
+   Esta licencia se rige por las leyes de la República de Costa Rica.
+   Cualquier disputa será resuelta en los tribunales competentes de
+   Costa Rica.
+
+10. CONTACTO
+
+    Autor: Decerone
+    Proyecto: RaízPHP v2.1
+    Repositorio: https://github.com/Decerone/raizphp-frame
+    País: Costa Rica
+
+
+================================================================================
+                    ENGLISH VERSION
+       Based on Apache License 2.0 - Adapted for RaízPHP
+================================================================================
+
+                    RAÍZPHP LICENSE v1.0
+
+                  Copyright (c) 2026 Decerone
+                       Costa Rica
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+1. ATTRIBUTION — All copies, modifications, and derivative works MUST
+   include, in a visible and clear manner:
+
+   a) The original copyright notice:
+      "Copyright (c) 2026 Decerone - Costa Rica"
+
+   b) The framework name: "RaízPHP"
+
+   c) A link to the official repository:
+      https://github.com/Decerone/raizphp-frame
+
+   d) This complete license in a LICENSE or LICENSE.txt file
+
+2. DOCUMENTATION RECOGNITION — The documentation of any project using
+   the Software MUST include:
+
+   a) A "Credits" or "Acknowledgments" section mentioning RaízPHP
+      and Decerone as the original author.
+
+   b) Required text example:
+      "This project uses RaízPHP v2.1, a PHP framework created by
+       Decerone (Costa Rica). https://github.com/Decerone/raizphp-frame"
+
+3. PUBLIC ACKNOWLEDGMENT — If the Software is used in a public project
+   (website, application, service), it MUST:
+
+   a) Include a visible link to the official RaízPHP repository.
+
+   b) Mention RaízPHP in the "About", "Credits", or equivalent section.
+
+4. NO REMOVAL — Copyright, attribution, and license notices included
+   in the original source code MUST NOT be removed or modified.
+
+5. LICENSE PRESERVATION — Derivative works may have different licenses,
+   but the original Software files MUST retain this license.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+================================================================================
+                    FIN DE LA LICENCIA
+================================================================================
