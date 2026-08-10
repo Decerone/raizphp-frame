@@ -32,6 +32,9 @@ switch ($comando) {
     case 'ayuda': case '--help': case '-h':
         $resultados = mostrarAyuda(); break;
 
+    case 'version': case '--version': case '-v':
+        $resultados = mostrarVersion($directorioRaiz); break;
+
     case 'crear:controlador':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = crearControlador($directorioRaiz, $subcomando); break;
@@ -84,7 +87,7 @@ switch ($comando) {
 
     case 'usuario:crear': $resultados = crearUsuario(); break;
     case 'usuario:rol':
-        if (!$subcomando || !$argumento) { $resultados = [C_ROJO."❌ Uso: php raizphp usuario:rol email rol".C_RESET]; break; }
+        if (!$subcomando || !$argumento) { $resultados = [C_ROJO."❌ Uso: php raiz usuario:rol email rol".C_RESET]; break; }
         $resultados = cambiarRol($subcomando, $argumento); break;
     case 'token:generar':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el email.".C_RESET]; break; }
@@ -101,7 +104,7 @@ switch ($comando) {
     case 'doc:generar': $resultados = [C_VERDE."✅ Documentación en: public/documentacion.php".C_RESET]; break;
 
     default:
-        $resultados = [C_ROJO."❌ Comando no reconocido: $comando".C_RESET,"","Usa ".C_VERDE."php raizphp ayuda".C_RESET];
+        $resultados = [C_ROJO."❌ Comando no reconocido: $comando".C_RESET,"","Usa ".C_VERDE."php raiz ayuda".C_RESET];
 }
 
 foreach ($resultados as $linea) echo $linea . PHP_EOL;
@@ -127,7 +130,50 @@ function mostrarAyuda(): array {
         C_CYAN."Usuarios:".C_RESET,
         "  usuario:crear  usuario:rol <email> <rol>  token:generar <email>  clave:generar","",
         C_CYAN."Utilidades:".C_RESET,
-        "  servir [puerto]  proyecto:info  proyecto:entorno [e]  doc:generar",
+        "  version  servir [puerto]  proyecto:info  proyecto:entorno [e]  doc:generar",
+    ];
+}
+
+function mostrarVersion(string $dir): array {
+    $jsonFile = $dir . '/raizphp.json';
+    
+    if (!file_exists($jsonFile)) {
+        return [
+            C_VERDE . C_NEGRITA . "🌱 RaízPHP v2.1" . C_RESET,
+            "",
+            C_AMARILLO . "⚠️ Archivo raizphp.json no encontrado." . C_RESET
+        ];
+    }
+    
+    $info = json_decode(file_get_contents($jsonFile), true);
+    
+    if (!$info) {
+        return [C_ROJO . "❌ Error al leer raizphp.json" . C_RESET];
+    }
+    
+    $f = $info['framework'];
+    $c = $info['componentes'];
+    $s = $info['seguridad'];
+    
+    return [
+        C_VERDE . C_NEGRITA . "🌱 {$f['nombre']} v{$f['version']}" . C_RESET,
+        C_CYAN . "   Framework MVC PHP — {$f['descripcion']}" . C_RESET,
+        "",
+        C_MORADO . C_NEGRITA . "📦 Componentes:" . C_RESET,
+        "   🗄️  {$c['orm']['nombre']} v{$c['orm']['version']} — {$c['orm']['metodos']} métodos en español",
+        "   🎨 {$c['css']['nombre']} v{$c['css']['version']} — Framework CSS con clases en español",
+        "   💻 {$c['cli']['nombre']} v{$c['cli']['version']} — {$c['cli']['comandos']} comandos disponibles",
+        "",
+        C_AZUL . C_NEGRITA . "🔒 Seguridad:" . C_RESET,
+        "   {$s['capas']} capas de protección activas",
+        "",
+        C_AMARILLO . "📋 Información:" . C_RESET,
+        "   PHP mínimo  : {$f['php_minimo']}",
+        "   Licencia    : {$f['licencia']}",
+        "   Autor       : {$f['autor']}",
+        "   País        : {$f['pais_origen']} 🇨🇷",
+        "   Dependencias: {$f['dependencias_externas']} (externas)",
+        "   Repositorio : {$f['repo']}",
     ];
 }
 
@@ -146,7 +192,7 @@ function crearModelo(string $dir, string $nombre): array {
     $nombre = ucfirst($nombre);
     $archivo = $dir."/app/Modelos/{$nombre}.php";
     if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe.".C_RESET];
-    $c = "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Modelos;\n\nuse App\\Nucleo\\Modelo;\n\nclass $nombre extends Modelo\n{\n    protected string \$tabla = '".strtolower($nombre)."s';\n}\n";
+    $c = "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Modelos;\n\nuse App\\Nucleo\\ModeloBase;\n\nclass $nombre extends ModeloBase\n{\n    protected static string \$tabla = '".strtolower($nombre)."s';\n}\n";
     file_put_contents($archivo, $c);
     return [C_VERDE."✅ Modelo: $archivo".C_RESET];
 }

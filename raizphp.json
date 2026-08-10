@@ -1,0 +1,101 @@
+{
+    "framework": {
+        "nombre": "RaízPHP",
+        "version": "2.1.0",
+        "codigo": "raizphp",
+        "fecha_publicacion": "2026-07",
+        "descripcion": "Framework MVC para PHP 8.0+ con ORM nativo, API REST, Panel Admin, CLI con 30+ comandos y 0 dependencias externas",
+        "lenguaje": "PHP",
+        "idioma": "Español",
+        "pais_origen": "Costa Rica",
+        "licencia": "RaízPHP License v1.0 - Software Libre (4 libertades)",
+        "autor": "Decerone",
+        "repo": "https://github.com/Decerone/raizphp-frame",
+        "php_minimo": "8.0",
+        "dependencias_externas": 0
+    },
+    "componentes": {
+        "orm": {
+            "nombre": "RaízORM",
+            "version": "1.0.0",
+            "descripcion": "Query Builder en español con 30+ métodos, caché integrado de consultas y soporte multi-base de datos",
+            "metodos": 30,
+            "bases_datos": ["MySQL", "PostgreSQL"],
+            "caracteristicas": [
+                "CRUD completo en español",
+                "Query Builder fluido (method chaining)",
+                "Consultas preparadas (anti SQL Injection)",
+                "Caché automática de consultas",
+                "JOINs (INNER, LEFT, RIGHT)",
+                "Funciones agregadas (COUNT, SUM, AVG, MAX, MIN)",
+                "Paginación automática",
+                "Depuración SQL con aSql()"
+            ]
+        },
+        "css": {
+            "nombre": "RaízCSS",
+            "version": "1.0.0",
+            "descripcion": "Framework CSS propio en español con clases en infinitivo, 0 dependencias externas",
+            "clases": ["fila", "columna", "tarjeta", "boton", "resaltar", "alerta", "tabla", "navegacion", "contenedor"],
+            "caracteristicas": [
+                "Sistema de rejilla (12 columnas)",
+                "Componentes (botones, tarjetas, alertas, badges, tablas)",
+                "Utilidades Flexbox",
+                "Tema oscuro integrado",
+                "Variables CSS personalizables",
+                "Responsive design",
+                "Animaciones de entrada"
+            ]
+        },
+        "cli": {
+            "nombre": "RaízCLI",
+            "version": "1.0.0",
+            "comandos": 31,
+            "categorias": {
+                "crear": ["controlador", "modelo", "vista", "middleware", "ruta", "api", "admin", "migracion", "seeder"],
+                "base_datos": ["migrar", "revertir", "migrar:estado", "migrar:fuerza", "seed", "db:respaldar", "db:restaurar"],
+                "cache_logs": ["cache:limpiar", "cache:estado", "log:limpiar", "log:ver"],
+                "listar": ["lista:rutas", "lista:middlewares", "lista:controladores"],
+                "usuarios": ["usuario:crear", "usuario:rol", "token:generar", "clave:generar"],
+                "utilidades": ["servir", "proyecto:info", "proyecto:entorno", "version"]
+            }
+        }
+    },
+    "seguridad": {
+        "capas": 10,
+        "protecciones": {
+            "csrf": {"activo": true, "middleware": "MiddlewareCsrf"},
+            "xss": {"activo": true, "funcion": "htmlspecialchars()"},
+            "sql_injection": {"activo": true, "metodo": "PDO consultas preparadas"},
+            "session_fixation": {"activo": true, "metodo": "session_regenerate_id()"},
+            "rate_limiting": {"activo": true, "tabla": "intentos_login"},
+            "clickjacking": {"activo": true, "header": "X-Frame-Options: DENY"},
+            "mime_sniffing": {"activo": true, "header": "X-Content-Type-Options: nosniff"},
+            "cookies_seguras": {"activo": true, "flags": "HttpOnly, SameSite, Secure"},
+            "https_forzado": {"activo": false, "configurable": true, "middleware": "MiddlewareHttps"},
+            "passwords": {"activo": true, "algoritmo": "bcrypt", "cost": 12}
+        }
+    },
+    "arquitectura": {
+        "patron": "MVC",
+        "front_controller": "public/index.php",
+        "singleton": "Aplicacion",
+        "autocargador": "PSR-4 propio",
+        "middleware": "Chain of Responsibility (PilaMiddleware)",
+        "cache": "Sistema de archivos en almacenamiento/cache/"
+    },
+    "requisitos": {
+        "php": "8.0+",
+        "extensiones": ["PDO", "PDO_MySQL", "OpenSSL", "mbstring", "JSON"],
+        "mysql": "5.7+",
+        "postgresql": "10+",
+        "apache": "2.4+",
+        "mod_rewrite": true
+    },
+    "estado": {
+        "estable": true,
+        "produccion": true,
+        "desarrollo_activo": true,
+        "siguiente_version": "2.2.0"
+    }
+}
