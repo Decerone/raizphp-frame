@@ -46,7 +46,7 @@ class ConstructorConsulta
         $sql = "INSERT INTO {$this->tabla} ($columnas) VALUES ($marcadores)";
         $pdo = Aplicacion::obtenerInstancia()->obtenerConexion()->obtenerPDO();
         $stmt = $pdo->prepare($sql); $stmt->execute(array_values($datos));
-        $this->limpiarCacheTabla();
+        //$this->limpiarCacheTabla();
         return $pdo->lastInsertId();
     }
     
@@ -58,7 +58,7 @@ class ConstructorConsulta
         $sql = "UPDATE {$this->tabla} SET $asignaciones" . $this->construirWhere();
         $pdo = Aplicacion::obtenerInstancia()->obtenerConexion()->obtenerPDO();
         $stmt = $pdo->prepare($sql); $stmt->execute($this->parametros);
-        $this->limpiarCacheTabla();
+        //$this->limpiarCacheTabla();
         return $stmt->rowCount();
     }
     
@@ -67,7 +67,7 @@ class ConstructorConsulta
         $sql = "DELETE FROM {$this->tabla}" . $this->construirWhere();
         $pdo = Aplicacion::obtenerInstancia()->obtenerConexion()->obtenerPDO();
         $stmt = $pdo->prepare($sql); $stmt->execute($this->parametros);
-        $this->limpiarCacheTabla();
+        //$this->limpiarCacheTabla();
         return $stmt->rowCount();
     }
     
