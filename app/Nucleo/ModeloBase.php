@@ -60,8 +60,9 @@ abstract class ModeloBase
     protected static function invalidarCache(): void
     {
         $cache = new Cache();
-        $cache->limpiarTabla(static::$tabla);
-        $cache->limpiarVistas();
+        // $cache->limpiarTabla(static::$tabla);
+        // $cache->limpiarVistas();
+        $cache->limpiarTodo();
     }
     
     public static function consultar(): ConstructorConsulta { return new ConstructorConsulta(static::class, static::$tabla); }
