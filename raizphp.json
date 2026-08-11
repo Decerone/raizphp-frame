@@ -16,9 +16,9 @@
     },
     "componentes": {
         "orm": {
-            "nombre": "RaízORM",
+            "nombre": "NaturalORM",
             "version": "1.0.0",
-            "descripcion": "Query Builder en español con 30+ métodos, caché integrado de consultas y soporte multi-base de datos",
+            "descripcion": "Query Builder en español con 30+ métodos, caché integrado de consultas y soporte multi-base de datos que permite una interacion con las bases de datos de forma Natural para el Hispano Hablante",
             "metodos": 30,
             "bases_datos": ["MySQL", "PostgreSQL"],
             "caracteristicas": [
@@ -33,9 +33,9 @@
             ]
         },
         "css": {
-            "nombre": "RaízCSS",
+            "nombre": "CelajeCSS",
             "version": "1.0.0",
-            "descripcion": "Framework CSS propio en español con clases en infinitivo, 0 dependencias externas",
+            "descripcion": "CelajeCSS es un framework que mantiene un atractivo visual con clases descriptivas en para los Hispano Hablantes , 0 dependencias externas",
             "clases": ["fila", "columna", "tarjeta", "boton", "resaltar", "alerta", "tabla", "navegacion", "contenedor"],
             "caracteristicas": [
                 "Sistema de rejilla (12 columnas)",
