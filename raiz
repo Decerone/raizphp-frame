@@ -33,13 +33,11 @@ function procesarLote(string $items, callable $callback): array
 {
     $resultados = [];
     $lista = array_map('trim', explode(',', $items));
-    
     foreach ($lista as $item) {
         if (!empty($item)) {
             $resultados = array_merge($resultados, $callback($item));
         }
     }
-    
     return $resultados;
 }
 
@@ -50,67 +48,86 @@ switch ($comando) {
     case 'version': case '--version': case '-v':
         $resultados = mostrarVersion($directorioRaiz); break;
 
+    // ==================== CREAR (LOTES) ====================
     case 'crear:controlador':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
             return crearControlador($directorioRaiz, $nombre);
-        });
-        break;
+        }); break;
         
     case 'crear:modelo':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
             return crearModelo($directorioRaiz, $nombre);
-        });
-        break;
+        }); break;
         
     case 'crear:vista':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
             return crearVista($directorioRaiz, $nombre);
-        });
-        break;
+        }); break;
         
     case 'crear:middleware':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
             return crearMiddleware($directorioRaiz, $nombre);
-        });
-        break;
+        }); break;
         
     case 'crear:ruta':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
             return crearRuta($directorioRaiz, $nombre);
-        });
-        break;
+        }); break;
         
     case 'crear:api':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
             return crearApi($directorioRaiz, $nombre);
-        });
-        break;
+        }); break;
         
     case 'crear:admin':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
             return crearAdmin($directorioRaiz, $nombre);
-        });
-        break;
+        }); break;
         
     case 'crear:migracion':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
             return crearMigracion($directorioRaiz, $nombre);
-        });
-        break;
+        }); break;
         
     case 'crear:seeder':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
             return crearSeeder($directorioRaiz, $nombre);
-        });
+        }); break;
+
+    // ==================== NUEVO: CREAR TABLA ====================
+    case 'crear:tabla':
+        if (!$subcomando || !$argumento) {
+            $resultados = [C_ROJO."❌ Uso: php raiz crear:tabla NombreTabla \"SQL\" o archivo.sql".C_RESET];
+            break;
+        }
+        $resultados = crearTabla($directorioRaiz, $subcomando, $argumento);
+        break;
+
+    // ==================== NUEVO: CONSULTA SQL ====================
+    case 'db:consulta':
+        if (!$subcomando) {
+            $resultados = [C_ROJO."❌ Uso: php raiz db:consulta \"SELECT ...\"".C_RESET];
+            break;
+        }
+        $resultados = ejecutarConsulta($directorioRaiz, $subcomando);
+        break;
+
+    // ==================== NUEVO: CARGAR ARCHIVO SQL ====================
+    case 'cargar:sql':
+        if (!$subcomando || !$argumento) {
+            $resultados = [C_ROJO."❌ Uso: php raiz cargar:sql nombre archivo.sql".C_RESET];
+            break;
+        }
+        $resultados = cargarSQL($directorioRaiz, $subcomando, $argumento);
         break;
 
     case 'migrar': $gestor = new App\Nucleo\GestorMigraciones($directorioRaiz); $resultados = $gestor->migrar(); break;
@@ -151,7 +168,6 @@ switch ($comando) {
 
     case 'proyecto:info': $resultados = infoProyecto($directorioRaiz); break;
     case 'proyecto:entorno': $resultados = cambiarEntorno($directorioRaiz, $subcomando); break;
-    case 'doc:generar': $resultados = [C_VERDE."✅ Documentación en: public/documentacion.php".C_RESET]; break;
 
     default:
         $resultados = [C_ROJO."❌ Comando no reconocido: $comando".C_RESET,"","Usa ".C_VERDE."php raiz ayuda".C_RESET];
@@ -168,20 +184,23 @@ function mostrarAyuda(): array {
     return [
         C_MORADO.C_NEGRITA."📚 COMANDOS".C_RESET,"",
         C_CYAN."Crear (soporta lotes con coma):".C_RESET,
-        "  crear:controlador <Nombre1,Nombre2,...>",
-        "  crear:modelo <Nombre1,Nombre2,...>",
+        "  crear:controlador <N1,N2,...>",
+        "  crear:modelo <N1,N2,...>",
         "  crear:vista <ruta1,ruta2,...>",
-        "  crear:middleware <Nombre1,Nombre2,...>",
-        "  crear:ruta <nombre1,nombre2,...>",
-        "  crear:api <Nombre1,Nombre2,...>",
-        "  crear:admin <Nombre1,Nombre2,...>",
-        "  crear:migracion <nombre1,nombre2,...>",
-        "  crear:seeder <Nombre1,Nombre2,...>","",
-        C_CYAN."Ejemplo de lotes:".C_RESET,
-        "  php raiz crear:modelo Casa,Carro,Moto",
-        "  php raiz crear:controlador Casa,Carro,Moto","",
-        C_CYAN."BD:".C_RESET,
-        "  migrar  revertir  migrar:estado  migrar:fuerza  seed  db:respaldar  db:restaurar <f>","",
+        "  crear:middleware <N1,N2,...>",
+        "  crear:ruta <n1,n2,...>",
+        "  crear:api <N1,N2,...>",
+        "  crear:admin <N1,N2,...>",
+        "  crear:migracion <n1,n2,...>",
+        "  crear:seeder <N1,N2,...>",
+        "  crear:tabla <Nombre> \"SQL\" o archivo.sql","",
+        C_CYAN."Ejemplo lotes:".C_RESET,
+        "  php raiz crear:modelo Casa,Carro,Moto","",
+        C_CYAN."Base de Datos:".C_RESET,
+        "  db:consulta \"SELECT ...\"",
+        "  cargar:sql <nombre> <archivo.sql>",
+        "  migrar  revertir  migrar:estado  migrar:fuerza  seed",
+        "  db:respaldar  db:restaurar <f>","",
         C_CYAN."Caché/Logs:".C_RESET,
         "  cache:limpiar  cache:estado  log:limpiar  log:ver [n]","",
         C_CYAN."Listar:".C_RESET,
@@ -189,7 +208,7 @@ function mostrarAyuda(): array {
         C_CYAN."Usuarios:".C_RESET,
         "  usuario:crear  usuario:rol <email> <rol>  token:generar <email>  clave:generar","",
         C_CYAN."Utilidades:".C_RESET,
-        "  version  servir [puerto]  proyecto:info  proyecto:entorno [e]  doc:generar",
+        "  version  servir [puerto]  proyecto:info  proyecto:entorno [e]",
     ];
 }
 
@@ -206,15 +225,124 @@ function mostrarVersion(string $dir): array {
         C_CYAN."   Framework MVC PHP — {$f['descripcion']}".C_RESET,"",
         C_MORADO.C_NEGRITA."📦 Componentes:".C_RESET,
         "   🗄️  {$c['orm']['nombre']} v{$c['orm']['version']} — {$c['orm']['metodos']} métodos",
-        "   🎨 {$c['css']['nombre']} v{$c['css']['version']} — Framework CSS en español",
+        "   🎨 {$c['css']['nombre']} v{$c['css']['version']} — CSS en español",
         "   💻 {$c['cli']['nombre']} v{$c['cli']['version']} — {$c['cli']['comandos']} comandos + lotes","",
         C_AZUL.C_NEGRITA."🔒 Seguridad:".C_RESET,"   {$s['capas']} capas activas","",
         C_AMARILLO."📋 Info:".C_RESET,
         "   PHP mínimo: {$f['php_minimo']} | Licencia: {$f['licencia']}",
-        "   Autor: {$f['autor']} — {$f['pais_origen']} 🇨🇷 | Dependencias: {$f['dependencias_externas']}",
+        "   Autor: {$f['autor']} — {$f['pais_origen']} 🇨🇷",
         "   Repo: {$f['repo']}",
     ];
 }
+
+// ==================== NUEVO: CREAR TABLA ====================
+function crearTabla(string $dir, string $nombre, string $sqlOArchivo): array
+{
+    $cfg = require $dir . '/config/aplicacion.php';
+    if (($cfg['entorno'] ?? 'produccion') !== 'desarrollo') {
+        return [C_ROJO."❌ Solo disponible en entorno desarrollo.".C_RESET];
+    }
+    
+    // Si es archivo .sql, leerlo
+    if (str_ends_with($sqlOArchivo, '.sql') && file_exists($sqlOArchivo)) {
+        $sql = file_get_contents($sqlOArchivo);
+    } else {
+        $sql = $sqlOArchivo;
+    }
+    
+    // Validar que sea CREATE TABLE
+    if (stripos(trim($sql), 'CREATE TABLE') !== 0) {
+        return [C_ROJO."❌ Solo se permiten sentencias CREATE TABLE.".C_RESET];
+    }
+    
+    echo C_AMARILLO . "⚠️  Crear tabla: " . C_CYAN . $nombre . C_RESET . PHP_EOL;
+    echo C_AMARILLO . "¿Ejecutar? (s/n): " . C_RESET;
+    $confirmacion = strtolower(trim(fgets(STDIN)));
+    if ($confirmacion !== 's' && $confirmacion !== 'si' && $confirmacion !== 'y') {
+        return [C_AMARILLO . "❌ Cancelado." . C_RESET];
+    }
+    
+    try {
+        $db = App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion();
+        $pdo = $db->obtenerPDO();
+        $pdo->exec($sql);
+        return [C_VERDE . "✅ Tabla '{$nombre}' creada correctamente." . C_RESET];
+    } catch (PDOException $e) {
+        return [C_ROJO . "❌ Error: " . $e->getMessage() . C_RESET];
+    }
+}
+
+// ==================== NUEVO: CONSULTA SELECT ====================
+function ejecutarConsulta(string $dir, string $sql): array
+{
+    // Validar que sea SELECT
+    if (stripos(trim($sql), 'SELECT') !== 0) {
+        return [C_ROJO."❌ Solo se permiten consultas SELECT.".C_RESET];
+    }
+    
+    try {
+        $db = App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion();
+        $pdo = $db->obtenerPDO();
+        $stmt = $pdo->query($sql);
+        $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $salida = [C_VERDE . "✅ " . count($resultados) . " resultados." . C_RESET, ""];
+        
+        if (empty($resultados)) {
+            $salida[] = C_AMARILLO . "   Sin resultados." . C_RESET;
+            return $salida;
+        }
+        
+        // Mostrar nombres de columnas
+        $columnas = array_keys($resultados[0]);
+        $salida[] = C_CYAN . "   " . implode(" | ", $columnas) . C_RESET;
+        $salida[] = C_CYAN . "   " . str_repeat('─', 50) . C_RESET;
+        
+        // Mostrar filas (máximo 20)
+        $count = 0;
+        foreach ($resultados as $row) {
+            if ($count++ >= 20) {
+                $salida[] = C_AMARILLO . "   ... y " . (count($resultados) - 20) . " más" . C_RESET;
+                break;
+            }
+            $salida[] = "   " . implode(" | ", array_map(fn($v) => is_null($v) ? 'NULL' : (string)$v, $row));
+        }
+        
+        return $salida;
+    } catch (PDOException $e) {
+        return [C_ROJO . "❌ Error: " . $e->getMessage() . C_RESET];
+    }
+}
+
+// ==================== NUEVO: CARGAR ARCHIVO SQL ====================
+function cargarSQL(string $dir, string $nombre, string $archivo): array
+{
+    if (!file_exists($archivo)) {
+        return [C_ROJO."❌ Archivo no encontrado: {$archivo}".C_RESET];
+    }
+    
+    $sql = file_get_contents($archivo);
+    
+    echo C_AMARILLO . "⚠️  Cargar: " . C_CYAN . $nombre . C_RESET . PHP_EOL;
+    echo C_AMARILLO . "   Archivo: " . basename($archivo) . " (" . strlen($sql) . " bytes)" . C_RESET . PHP_EOL;
+    echo C_AMARILLO . "¿Ejecutar? (s/n): " . C_RESET;
+    
+    $confirmacion = strtolower(trim(fgets(STDIN)));
+    if ($confirmacion !== 's' && $confirmacion !== 'si' && $confirmacion !== 'y') {
+        return [C_AMARILLO . "❌ Cancelado." . C_RESET];
+    }
+    
+    try {
+        $db = App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion();
+        $pdo = $db->obtenerPDO();
+        $pdo->exec($sql);
+        return [C_VERDE . "✅ Archivo '{$nombre}' cargado correctamente." . C_RESET];
+    } catch (PDOException $e) {
+        return [C_ROJO . "❌ Error: " . $e->getMessage() . C_RESET];
+    }
+}
+
+// ==================== FUNCIONES EXISTENTES ====================
 
 function crearControlador(string $dir, string $nombre): array {
     $nombre = ucfirst($nombre);
