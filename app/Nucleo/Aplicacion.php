@@ -16,15 +16,24 @@ class Aplicacion
     private Enrutador $enrutador;
     private array $configuracion;
     private ?Conexion $conexion = null;
+    private Renderizador $renderizador;
+    
     public function __construct(string $directorioRaiz)
     {
         $this->directorioRaiz = rtrim($directorioRaiz, '/');
         self::$instancia = $this;
         $this->cargarConfiguracion();
+        
+        $directorioVistas = $this->directorioRaiz . '/app/Vistas';
+        $this->renderizador = new Renderizador($directorioVistas);
+        
         $this->enrutador = new Enrutador();
-        $this->registrarRutas();
+        $this->enrutador->setRenderizador($this->renderizador);
+        
+        $this->cargarRutas();
         $this->registrarMiddlewares();
     }
+    
     public static function obtenerInstancia(): self { return self::$instancia; }
     public function obtenerDirectorioRaiz(): string { return $this->directorioRaiz; }
     public function obtenerConfiguracion(string $clave, $porDefecto = null) { return $this->configuracion[$clave] ?? $porDefecto; }
@@ -33,51 +42,29 @@ class Aplicacion
         if ($this->conexion === null) $this->conexion = new Conexion($this->configuracion['base_datos']);
         return $this->conexion;
     }
+    public function obtenerRenderizador(): Renderizador { return $this->renderizador; }
+    
     private function cargarConfiguracion(): void
     {
         $rutaBase = $this->directorioRaiz . '/config/base_datos.php';
         $rutaApp  = $this->directorioRaiz . '/config/aplicacion.php';
-        if (!file_exists($rutaBase) || !file_exists($rutaApp)) throw new \RuntimeException("Archivos de configuración no encontrados.");
+        if (!file_exists($rutaBase) || !file_exists($rutaApp)) {
+            throw new \RuntimeException("Archivos de configuración no encontrados. Copia config/*.ejemplo.php a config/*.php");
+        }
         $configBD = require $rutaBase;
         if (!is_array($configBD)) throw new \RuntimeException("base_datos.php debe devolver un array.");
         $configApp = require $rutaApp;
         if (!is_array($configApp)) throw new \RuntimeException("aplicacion.php debe devolver un array.");
         $this->configuracion = ['base_datos' => $configBD, 'app' => $configApp];
     }
-    private function registrarRutas(): void
+    
+    private function cargarRutas(): void
     {
-        $this->enrutador->agregarRuta('GET','/','InicioControlador@index');
-        $this->enrutador->agregarRuta('GET','/login','AuthControlador@formularioLogin');
-        $this->enrutador->agregarRuta('POST','/login','AuthControlador@iniciarSesion');
-        $this->enrutador->agregarRuta('GET','/registro','AuthControlador@formularioRegistro');
-        $this->enrutador->agregarRuta('POST','/registro','AuthControlador@registrar');
-        $this->enrutador->agregarRuta('GET','/logout','AuthControlador@cerrarSesion');
-        $this->enrutador->agregarRuta('GET','/admin','AdminControlador@index');
-        $this->enrutador->agregarRuta('GET','/admin/cache','AdminControlador@cache');
-        $this->enrutador->agregarRuta('GET','/admin/cache/limpiar','AdminControlador@limpiarCache');
-        $this->enrutador->agregarRuta('GET','/admin/usuarios','Admin\UsuarioAdminControlador@lista');
-        $this->enrutador->agregarRuta('GET','/admin/usuarios/editar','Admin\UsuarioAdminControlador@editar');
-        $this->enrutador->agregarRuta('POST','/admin/usuarios/actualizar','Admin\UsuarioAdminControlador@actualizar');
-        $this->enrutador->agregarRuta('GET','/admin/usuarios/eliminar','Admin\UsuarioAdminControlador@eliminar');
-        $this->enrutador->agregarRuta('GET','/recuperar','RecuperacionControlador@solicitar');
-        $this->enrutador->agregarRuta('POST','/recuperar','RecuperacionControlador@enviarEnlace');
-        $this->enrutador->agregarRuta('GET','/restablecer','RecuperacionControlador@restablecer');
-        $this->enrutador->agregarRuta('POST','/restablecer','RecuperacionControlador@cambiarPassword');
-        $this->enrutador->agregarRuta('POST','/api/login','AuthControlador@apiLogin');
-        $this->enrutador->agregarRuta('GET','/api/usuarios','Api\UsuarioApiControlador@lista');
-        $this->enrutador->agregarRuta('GET','/api/usuarios/mostrar','Api\UsuarioApiControlador@mostrar');
-        $this->enrutador->agregarRuta('POST','/api/usuarios/crear','Api\UsuarioApiControlador@crear');
-        $this->enrutador->agregarMiddlewareRuta('GET','/admin',new MiddlewareRol('admin'));
-        $this->enrutador->agregarMiddlewareRuta('GET','/admin/cache',new MiddlewareRol('admin'));
-        $this->enrutador->agregarMiddlewareRuta('GET','/admin/cache/limpiar',new MiddlewareRol('admin'));
-        $this->enrutador->agregarMiddlewareRuta('GET','/admin/usuarios',new MiddlewareRol('admin'));
-        $this->enrutador->agregarMiddlewareRuta('GET','/admin/usuarios/editar',new MiddlewareRol('admin'));
-        $this->enrutador->agregarMiddlewareRuta('POST','/admin/usuarios/actualizar',new MiddlewareRol('admin'));
-        $this->enrutador->agregarMiddlewareRuta('GET','/admin/usuarios/eliminar',new MiddlewareRol('admin'));
-        $this->enrutador->agregarMiddlewareRuta('GET','/api/usuarios',new MiddlewareApiAuth());
-        $this->enrutador->agregarMiddlewareRuta('GET','/api/usuarios/mostrar',new MiddlewareApiAuth());
-        $this->enrutador->agregarMiddlewareRuta('POST','/api/usuarios/crear',new MiddlewareApiAuth());
+        $directorioRutas = $this->directorioRaiz . '/app/rutas';
+        $cargador = new CargadorRutas($this->enrutador, $directorioRutas);
+        $cargador->cargar();
     }
+    
     private function registrarMiddlewares(): void
     {
         $this->enrutador->usarMiddleware(new MiddlewareRegistro());
@@ -87,5 +74,22 @@ class Aplicacion
         $this->enrutador->usarMiddleware(new MiddlewareCsrf());
         $this->enrutador->usarMiddleware(new MiddlewareAutenticacion());
     }
-    public function ejecutar(): void { $this->enrutador->despachar($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']); }
+    
+    public function ejecutar(): void
+    {
+        try {
+            $this->enrutador->despachar($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+        } catch (\Throwable $e) {
+            error_log('Error 500: ' . $e->getMessage());
+            if (isset($this->renderizador)) {
+                try {
+                    http_response_code(500);
+                    $this->renderizador->mostrar('errores/500', ['urlBase' => UrlHelper::base() ?: '/'], null, false);
+                    return;
+                } catch (\RuntimeException $ex) {}
+            }
+            http_response_code(500);
+            echo '500 - Error interno del servidor';
+        }
+    }
 }
