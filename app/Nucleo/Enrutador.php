@@ -8,7 +8,7 @@ class Enrutador {
     public function usarMiddleware(Middleware $m):void{ $this->pila->agregar($m); }
     public function agregarRuta(string $met,string $ruta,string $man):void{ $this->rutas[$met][$ruta]=$man; }
     public function agregarMiddlewareRuta(string $met,string $ruta,Middleware $m):void{ $this->middlewaresRuta[$met][$ruta][]=$m; }
-    private function obtenerUriBase():string{ $s=$_SERVER["SCRIPT_NAME"]??"/index.php"; $b=dirname(dirname(dirname($s))); if($b==="/"||$b==="\\\\")$b=""; return $b; }
+    private function obtenerUriBase():string{ $s=$_SERVER["SCRIPT_NAME"]??"/index.php"; $b=dirname(dirname(dirname($s))); if($b==="/"||$b==="\\")$b=""; return $b; }
     public function despachar(string $met,string $uri):void{
         try{
             $uri=parse_url($uri,PHP_URL_PATH); $uri=rtrim($uri,"/")?:"/"; $base=$this->obtenerUriBase();
@@ -16,7 +16,8 @@ class Enrutador {
             if($uri===""||$uri===false)$uri="/";
             if(!isset($this->rutas[$met][$uri])){$this->mostrarError(404);return;}
             if(isset($this->middlewaresRuta[$met][$uri])) foreach($this->middlewaresRuta[$met][$uri] as $m) $this->pila->agregar($m);
-            [$ctrl,$acc]=explode("@",$this->rutas[$met][$uri]); $cc="App\\\\Controladores\\\\$ctrl";
+            [$ctrl,$acc]=explode("@",$this->rutas[$met][$uri]);
+            $cc = "App\\Controladores\\" . $ctrl;
             if(!class_exists($cc)) throw new \RuntimeException("Controlador $cc no encontrado.");
             $dest=function()use($cc,$acc){$i=new $cc();return call_user_func([$i,$acc]);};
             $this->pila->ejecutar($_SERVER,$dest);

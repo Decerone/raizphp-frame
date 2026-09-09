@@ -23,6 +23,14 @@ class Usuario extends ModeloBase
         return static::consultar()->donde('email', '=', $email)->primero();
     }
 
+    public static function buscarPorToken(string $token): ?self
+    {
+        // TODO: En tarea C7 se guardará el hash del token (sha256).
+        // Por ahora el token se compara en claro.
+        if (empty($token)) return null;
+        return static::consultar()->donde('api_token', '=', $token)->primero();
+    }
+
     public function verificarPassword(string $password): bool
     {
         return password_verify($password, $this->password ?? '');
