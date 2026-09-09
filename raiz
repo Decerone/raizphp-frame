@@ -365,7 +365,7 @@ function crearApi(string $dir, string $nombre): array {
     @mkdir($dir."/app/Controladores/Api", 0775, true);
     $archivo = $dir."/app/Controladores/Api/{$nombre}ApiControlador.php";
     if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe: {$nombre}ApiControlador".C_RESET];
-    file_put_contents($archivo, "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Controladores\\Api;\n\nuse App\\Nucleo\\ControladorBase;\n\nclass {$nombre}ApiControlador extends ControladorBase\n{\n    public function lista(): void\n    {\n        \$this->respuestaJson(['data' => []]);\n    }\n}\n");
+    file_put_contents($archivo, "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Controladores\\Api;\n\nuse App\\Nucleo\\ControladorApi;\n\nclass {$nombre}ApiControlador extends ControladorApi\n{\n    public function lista(): void\n    {\n        \$this->responder(['datos' => []]);\n    }\n}\n");
     return [C_VERDE."✅ API: {$nombre}ApiControlador".C_RESET];
 }
 
