@@ -1,7 +1,5 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Nucleo;
 
 class Cache
@@ -11,124 +9,80 @@ class Cache
     public function __construct()
     {
         $this->directorioCache = dirname(__DIR__, 2) . '/almacenamiento/cache';
-        
-        // Crear directorio si no existe
         if (!is_dir($this->directorioCache)) {
             mkdir($this->directorioCache, 0775, true);
         }
     }
 
-    /**
-     * Obtiene un valor de la caché
-     */
     public function obtener(string $clave): mixed
     {
         $archivo = $this->directorioCache . '/' . md5($clave) . '.cache';
-        
-        if (!file_exists($archivo)) {
-            return null;
-        }
+        if (!file_exists($archivo)) return null;
         
         $datos = file_get_contents($archivo);
-        if ($datos === false) {
-            return null;
-        }
+        if ($datos === false) return null;
         
-        $cache = unserialize($datos);
+        // SEGURO: JSON en lugar de unserialize
+        $cache = json_decode($datos, true);
+        if (!is_array($cache)) return null;
         
-        if ($cache === false) {
-            return null;
-        }
-        
-        // Verificar expiración
-        if ($cache['expiracion'] < time()) {
+        if (($cache['expiracion'] ?? 0) < time()) {
             @unlink($archivo);
             return null;
         }
         
-        return $cache['datos'];
+        return $cache['datos'] ?? null;
     }
 
-    /**
-     * Guarda un valor en la caché
-     */
     public function guardar(string $clave, mixed $datos, int $duracion = 3600): void
     {
-        $archivo = $this->directorioCache . '/' . md5($clave) . '.cache';
+        // Convertir objetos a arrays para JSON
+        if (is_object($datos) && method_exists($datos, 'aArray')) {
+            $datos = $datos->aArray();
+        }
         
+        $archivo = $this->directorioCache . '/' . md5($clave) . '.cache';
         $cache = [
             'expiracion' => time() + $duracion,
-            'datos'      => $datos
+            'datos' => $datos
         ];
         
-        file_put_contents($archivo, serialize($cache), LOCK_EX);
+        // SEGURO: JSON en lugar de serialize
+        file_put_contents($archivo, json_encode($cache, JSON_UNESCAPED_UNICODE), LOCK_EX);
         @chmod($archivo, 0664);
     }
 
-    /**
-     * Elimina un valor específico de la caché
-     */
     public function eliminar(string $clave): void
     {
         $archivo = $this->directorioCache . '/' . md5($clave) . '.cache';
-        
-        if (file_exists($archivo)) {
-            @unlink($archivo);
-        }
+        if (file_exists($archivo)) @unlink($archivo);
     }
 
-    /**
-     * Limpia toda la caché
-     */
     public function limpiarTodo(): void
     {
         if (is_dir($this->directorioCache)) {
             $archivos = glob($this->directorioCache . '/*.cache');
-            foreach ($archivos as $archivo) {
-                @unlink($archivo);
-            }
+            foreach ($archivos as $archivo) @unlink($archivo);
         }
     }
 
-    /**
-     * Limpia la caché de una tabla específica
-     */
     public function limpiarTabla(string $tabla): void
     {
-        if (is_dir($this->directorioCache)) {
-            $archivos = glob($this->directorioCache . '/*.cache');
-            foreach ($archivos as $archivo) {
-                $nombre = basename($archivo);
-                if (strpos($nombre, $tabla) !== false) {
-                    @unlink($archivo);
-                }
-            }
-        }
+        // NOTA: Los archivos se llaman md5(clave), no contienen el nombre de tabla.
+        // Por eso limpiarTabla() no puede filtrar. Se limpia todo.
+        $this->limpiarTodo();
     }
 
-    /**
-     * Limpia la caché de vistas
-     */
     public function limpiarVistas(): void
     {
-        if (is_dir($this->directorioCache)) {
-            $archivos = glob($this->directorioCache . '/*.cache');
-            foreach ($archivos as $archivo) {
-                $nombre = basename($archivo);
-                if (strpos($nombre, 'vista_') !== false) {
-                    @unlink($archivo);
-                }
-            }
-        }
+        // NOTA: Igual que limpiarTabla. Los nombres son md5.
+        $this->limpiarTodo();
     }
 
-    /**
-     * Obtiene estadísticas de la caché
-     */
     public function estadisticas(): array
     {
         if (!is_dir($this->directorioCache)) {
-            return ['archivos' => 0, 'tamano' => 0, 'antiguedad' => 0];
+            return ['archivos' => 0, 'tamano' => 0, 'tamano_kb' => 0, 'antiguedad' => 0];
         }
         
         $archivos = glob($this->directorioCache . '/*.cache');
@@ -139,32 +93,24 @@ class Cache
         foreach ($archivos as $archivo) {
             $tamano += filesize($archivo);
             $mtime = filemtime($archivo);
-            if ($mtime < $masAntiguo) {
-                $masAntiguo = $mtime;
-            }
+            if ($mtime < $masAntiguo) $masAntiguo = $mtime;
         }
         
         return [
-            'archivos'   => $total,
-            'tamano'     => $tamano,
-            'tamano_kb'  => round($tamano / 1024, 2),
+            'archivos' => $total,
+            'tamano' => $tamano,
+            'tamano_kb' => round($tamano / 1024, 2),
             'antiguedad' => $total > 0 ? time() - $masAntiguo : 0
         ];
     }
 
-    /**
-     * Genera clave de caché para una vista
-     */
     public static function claveVista(string $vista, array $datos): string
     {
-        return 'vista_' . md5($vista . serialize($datos));
+        return 'vista_' . md5($vista . json_encode($datos));
     }
 
-    /**
-     * Genera clave de caché para una consulta
-     */
     public static function claveConsulta(string $sql, array $parametros): string
     {
-        return 'consulta_' . md5($sql . serialize($parametros));
+        return 'consulta_' . md5($sql . json_encode($parametros));
     }
 }
