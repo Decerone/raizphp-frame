@@ -28,7 +28,6 @@ echo C_RESET . C_CYAN . "  " . str_repeat('─', 35) . C_RESET . PHP_EOL . PHP_E
 
 $resultados = [];
 
-// ==================== FUNCIÓN DE LOTES ====================
 function procesarLote(string $items, callable $callback): array
 {
     $resultados = [];
@@ -48,7 +47,6 @@ switch ($comando) {
     case 'version': case '--version': case '-v':
         $resultados = mostrarVersion($directorioRaiz); break;
 
-    // ==================== CREAR (LOTES) ====================
     case 'crear:controlador':
         if (!$subcomando) { $resultados = [C_ROJO."❌ Especifica el nombre.".C_RESET]; break; }
         $resultados = procesarLote($subcomando, function($nombre) use ($directorioRaiz) {
@@ -103,7 +101,6 @@ switch ($comando) {
             return crearSeeder($directorioRaiz, $nombre);
         }); break;
 
-    // ==================== NUEVO: CREAR TABLA ====================
     case 'crear:tabla':
         if (!$subcomando || !$argumento) {
             $resultados = [C_ROJO."❌ Uso: php raiz crear:tabla NombreTabla \"SQL\" o archivo.sql".C_RESET];
@@ -112,7 +109,6 @@ switch ($comando) {
         $resultados = crearTabla($directorioRaiz, $subcomando, $argumento);
         break;
 
-    // ==================== NUEVO: CONSULTA SQL ====================
     case 'db:consulta':
         if (!$subcomando) {
             $resultados = [C_ROJO."❌ Uso: php raiz db:consulta \"SELECT ...\"".C_RESET];
@@ -121,7 +117,6 @@ switch ($comando) {
         $resultados = ejecutarConsulta($directorioRaiz, $subcomando);
         break;
 
-    // ==================== NUEVO: CARGAR ARCHIVO SQL ====================
     case 'cargar:sql':
         if (!$subcomando || !$argumento) {
             $resultados = [C_ROJO."❌ Uso: php raiz cargar:sql nombre archivo.sql".C_RESET];
@@ -235,33 +230,26 @@ function mostrarVersion(string $dir): array {
     ];
 }
 
-// ==================== NUEVO: CREAR TABLA ====================
 function crearTabla(string $dir, string $nombre, string $sqlOArchivo): array
 {
     $cfg = require $dir . '/config/aplicacion.php';
     if (($cfg['entorno'] ?? 'produccion') !== 'desarrollo') {
         return [C_ROJO."❌ Solo disponible en entorno desarrollo.".C_RESET];
     }
-    
-    // Si es archivo .sql, leerlo
     if (str_ends_with($sqlOArchivo, '.sql') && file_exists($sqlOArchivo)) {
         $sql = file_get_contents($sqlOArchivo);
     } else {
         $sql = $sqlOArchivo;
     }
-    
-    // Validar que sea CREATE TABLE
     if (stripos(trim($sql), 'CREATE TABLE') !== 0) {
         return [C_ROJO."❌ Solo se permiten sentencias CREATE TABLE.".C_RESET];
     }
-    
     echo C_AMARILLO . "⚠️  Crear tabla: " . C_CYAN . $nombre . C_RESET . PHP_EOL;
     echo C_AMARILLO . "¿Ejecutar? (s/n): " . C_RESET;
     $confirmacion = strtolower(trim(fgets(STDIN)));
     if ($confirmacion !== 's' && $confirmacion !== 'si' && $confirmacion !== 'y') {
         return [C_AMARILLO . "❌ Cancelado." . C_RESET];
     }
-    
     try {
         $db = App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion();
         $pdo = $db->obtenerPDO();
@@ -272,33 +260,24 @@ function crearTabla(string $dir, string $nombre, string $sqlOArchivo): array
     }
 }
 
-// ==================== NUEVO: CONSULTA SELECT ====================
 function ejecutarConsulta(string $dir, string $sql): array
 {
-    // Validar que sea SELECT
     if (stripos(trim($sql), 'SELECT') !== 0) {
         return [C_ROJO."❌ Solo se permiten consultas SELECT.".C_RESET];
     }
-    
     try {
         $db = App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion();
         $pdo = $db->obtenerPDO();
         $stmt = $pdo->query($sql);
         $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
         $salida = [C_VERDE . "✅ " . count($resultados) . " resultados." . C_RESET, ""];
-        
         if (empty($resultados)) {
             $salida[] = C_AMARILLO . "   Sin resultados." . C_RESET;
             return $salida;
         }
-        
-        // Mostrar nombres de columnas
         $columnas = array_keys($resultados[0]);
         $salida[] = C_CYAN . "   " . implode(" | ", $columnas) . C_RESET;
         $salida[] = C_CYAN . "   " . str_repeat('─', 50) . C_RESET;
-        
-        // Mostrar filas (máximo 20)
         $count = 0;
         foreach ($resultados as $row) {
             if ($count++ >= 20) {
@@ -307,31 +286,25 @@ function ejecutarConsulta(string $dir, string $sql): array
             }
             $salida[] = "   " . implode(" | ", array_map(fn($v) => is_null($v) ? 'NULL' : (string)$v, $row));
         }
-        
         return $salida;
     } catch (PDOException $e) {
         return [C_ROJO . "❌ Error: " . $e->getMessage() . C_RESET];
     }
 }
 
-// ==================== NUEVO: CARGAR ARCHIVO SQL ====================
 function cargarSQL(string $dir, string $nombre, string $archivo): array
 {
     if (!file_exists($archivo)) {
         return [C_ROJO."❌ Archivo no encontrado: {$archivo}".C_RESET];
     }
-    
     $sql = file_get_contents($archivo);
-    
     echo C_AMARILLO . "⚠️  Cargar: " . C_CYAN . $nombre . C_RESET . PHP_EOL;
     echo C_AMARILLO . "   Archivo: " . basename($archivo) . " (" . strlen($sql) . " bytes)" . C_RESET . PHP_EOL;
     echo C_AMARILLO . "¿Ejecutar? (s/n): " . C_RESET;
-    
     $confirmacion = strtolower(trim(fgets(STDIN)));
     if ($confirmacion !== 's' && $confirmacion !== 'si' && $confirmacion !== 'y') {
         return [C_AMARILLO . "❌ Cancelado." . C_RESET];
     }
-    
     try {
         $db = App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion();
         $pdo = $db->obtenerPDO();
@@ -341,8 +314,6 @@ function cargarSQL(string $dir, string $nombre, string $archivo): array
         return [C_ROJO . "❌ Error: " . $e->getMessage() . C_RESET];
     }
 }
-
-// ==================== FUNCIONES EXISTENTES ====================
 
 function crearControlador(string $dir, string $nombre): array {
     $nombre = ucfirst($nombre);
@@ -511,19 +482,35 @@ function crearUsuario(): array {
     echo "Email: "; $e=trim(fgets(STDIN));
     echo "Contraseña: "; $p=trim(fgets(STDIN));
     echo "Edad: "; $ed=intval(trim(fgets(STDIN)));
-    $db = App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion();
-    $db->insertar('usuarios', ['nombre'=>$n,'apellido'=>$a,'email'=>$e,'password'=>password_hash($p,PASSWORD_BCRYPT),'edad'=>$ed,'rol'=>'usuario']);
+    $usuario = new App\Modelos\Usuario();
+    $usuario->nombre = $n;
+    $usuario->apellido = $a;
+    $usuario->email = $e;
+    $usuario->password = password_hash($p, PASSWORD_BCRYPT);
+    $usuario->edad = $ed;
+    $usuario->rol = 'usuario';
+    $usuario->guardar();
     return [C_VERDE."✅ Usuario: $e".C_RESET];
 }
 
 function cambiarRol(string $e, string $r): array {
-    App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion()->actualizar('usuarios', ['rol'=>$r], "email='$e'");
+    $usuario = App\Modelos\Usuario::buscarPorEmail($e);
+    if (!$usuario) {
+        return [C_ROJO."❌ Usuario no encontrado: $e".C_RESET];
+    }
+    $usuario->rol = $r;
+    $usuario->guardar();
     return [C_VERDE."✅ Rol de $e → $r".C_RESET];
 }
 
 function generarToken(string $e): array {
+    $usuario = App\Modelos\Usuario::buscarPorEmail($e);
+    if (!$usuario) {
+        return [C_ROJO."❌ Usuario no encontrado: $e".C_RESET];
+    }
     $t = bin2hex(random_bytes(32));
-    App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion()->actualizar('usuarios', ['api_token'=>$t], "email='$e'");
+    $usuario->api_token = $t;
+    $usuario->guardar();
     return [C_VERDE."✅ Token: $t".C_RESET];
 }
 
