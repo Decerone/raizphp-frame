@@ -382,7 +382,7 @@ function crearMigracion(string $dir, string $nombre): array {
     @mkdir($dir."/app/Migraciones", 0775, true);
     $ts = date('Y_m_d_His');
     $archivo = $dir."/app/Migraciones/{$ts}_{$nombre}.php";
-    file_put_contents($archivo, "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Migraciones;\n\nuse App\\Nucleo\\Migracion;\n\nclass {$ts}_{$nombre} extends Migracion\n{\n    public function arriba(): void {}\n    public function abajo(): void {}\n}\n");
+    file_put_contents($archivo, "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Migraciones;\n\nuse App\\Nucleo\\Migracion;\n\nclass {$ts}_{$nombre} extends Migracion\n{\n    public function subir(): void {}\n    public function bajar(): void {}\n}\n");
     return [C_VERDE."✅ Migración: {$nombre}".C_RESET];
 }
 
