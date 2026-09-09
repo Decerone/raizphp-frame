@@ -5,10 +5,21 @@ abstract class ModeloBase
 {
     protected static string $tabla;
     protected static string $clavePrimaria = 'id';
+    protected static array $rellenables = [];
     protected array $atributos = [];
     
     public function __construct(array $datos = []) { $this->llenar($datos); }
-    public function llenar(array $datos): void { foreach ($datos as $k => $v) $this->atributos[$k] = $v; }
+    
+    public function llenar(array $datos): void
+    {
+        foreach ($datos as $k => $v) {
+            // Solo asignar si la clave está en $rellenables
+            if (empty(static::$rellenables) || in_array($k, static::$rellenables, true)) {
+                $this->atributos[$k] = $v;
+            }
+        }
+    }
+    
     public function __get(string $nombre) { return $this->atributos[$nombre] ?? null; }
     public function __set(string $nombre, $valor): void { $this->atributos[$nombre] = $valor; }
     
@@ -31,7 +42,6 @@ abstract class ModeloBase
             }
         }
         
-        // Invalidar caché después de escribir
         if ($resultado) {
             static::invalidarCache();
         }
@@ -46,7 +56,6 @@ abstract class ModeloBase
         
         $resultado = static::consultar()->donde($pk, '=', $this->atributos[$pk])->eliminar() > 0;
         
-        // Invalidar caché después de eliminar
         if ($resultado) {
             static::invalidarCache();
         }
@@ -54,14 +63,9 @@ abstract class ModeloBase
         return $resultado;
     }
     
-    /**
-     * Invalida la caché de consultas y vistas relacionadas con esta tabla
-     */
     protected static function invalidarCache(): void
     {
         $cache = new Cache();
-        // $cache->limpiarTabla(static::$tabla);
-        // $cache->limpiarVistas();
         $cache->limpiarTodo();
     }
     

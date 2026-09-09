@@ -7,6 +7,16 @@ class Usuario extends ModeloBase
 {
     protected static string $tabla = 'usuarios';
     protected static string $clavePrimaria = 'id';
+    
+    // SOLO estas claves se asignan masivamente (llenar/constructor)
+    // NUNCA rol ni api_token desde POST/JSON público
+    protected static array $rellenables = [
+        'nombre',
+        'apellido',
+        'email',
+        'password',
+        'edad'
+    ];
 
     public function nombreCompleto(): string
     {
@@ -26,7 +36,6 @@ class Usuario extends ModeloBase
     public static function buscarPorToken(string $token): ?self
     {
         // TODO: En tarea C7 se guardará el hash del token (sha256).
-        // Por ahora el token se compara en claro.
         if (empty($token)) return null;
         return static::consultar()->donde('api_token', '=', $token)->primero();
     }
