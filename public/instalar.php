@@ -2,7 +2,13 @@
 
 declare(strict_types=1);
 error_reporting(E_ALL);
-ini_set('display_errors', '1');
+// Mostrar errores solo en desarrollo
+$entornoSolicitado = $_POST['app_entorno'] ?? $_GET['entorno'] ?? 'desarrollo';
+if ($entornoSolicitado === 'desarrollo') {
+    ini_set('display_errors', '1');
+} else {
+    ini_set('display_errors', '0');
+}
 
 $paso = $_GET['paso'] ?? '1';
 $errores = [];
