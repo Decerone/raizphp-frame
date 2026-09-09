@@ -1,2 +1,28 @@
 <!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title><?= $titulo ?? 'RaízPHP' ?></title><link rel="stylesheet" href="<?= $urlBase ?>/estilos/raiz.css"></head><body><nav class="navegacion"><div class="contenedor"><a href="<?= $urlBase ?>/" class="marca">RaízPHP</a><ul class="menu"><li><a href="<?= $urlBase ?>/">Inicio</a></li><li><a href="<?= $urlBase ?>/admin">Admin</a></li></ul><?php if (\App\Nucleo\Autenticacion::estaAutenticado()): ?><a href="<?= $urlBase ?>/logout" class="boton boton-esquema">Salir</a><?php endif; ?></div></nav><main class="contenedor mt-2"><?= $contenido ?></main><script src="<?= $urlBase ?>/estilos/app.js"></script></body></html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $titulo ?? 'RaízPHP' ?></title>
+    <link rel="stylesheet" href="<?= $urlBase ?>/estilos/raiz.css">
+</head>
+<body>
+    <nav class="navegacion">
+        <div class="contenedor">
+            <a href="<?= $urlBase ?>/" class="marca">RaízPHP</a>
+            <ul class="menu">
+                <li><a href="<?= $urlBase ?>/">Inicio</a></li>
+                <li><a href="<?= $urlBase ?>/admin">Admin</a></li>
+            </ul>
+            <?php if (\App\Nucleo\Autenticacion::estaAutenticado()): ?>
+                <form method="POST" action="<?= $urlBase ?>/logout" style="display:inline;">
+                    <input type="hidden" name="_token" value="<?= \App\Nucleo\HelperCsrf::obtenerToken() ?>">
+                    <button type="submit" class="boton boton-esquema">Salir</button>
+                </form>
+            <?php endif; ?>
+        </div>
+    </nav>
+    <main class="contenedor mt-2"><?= $contenido ?></main>
+    <script src="<?= $urlBase ?>/estilos/app.js"></script>
+</body>
+</html>

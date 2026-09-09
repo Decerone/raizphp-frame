@@ -7,7 +7,7 @@ return function (Enrutador $enrutador): void {
     $enrutador->agregarRuta("POST","/login","AuthControlador@iniciarSesion");
     $enrutador->agregarRuta("GET","/registro","AuthControlador@formularioRegistro");
     $enrutador->agregarRuta("POST","/registro","AuthControlador@registrar");
-    $enrutador->agregarRuta("GET","/logout","AuthControlador@cerrarSesion");
+    $enrutador->agregarRuta("POST","/logout","AuthControlador@cerrarSesion");
     $enrutador->agregarRuta("GET","/recuperar","RecuperacionControlador@solicitar");
     $enrutador->agregarRuta("POST","/recuperar","RecuperacionControlador@enviarEnlace");
     $enrutador->agregarRuta("GET","/restablecer","RecuperacionControlador@restablecer");
