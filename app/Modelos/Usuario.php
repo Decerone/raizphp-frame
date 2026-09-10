@@ -8,8 +8,6 @@ class Usuario extends ModeloBase
     protected static string $tabla = 'usuarios';
     protected static string $clavePrimaria = 'id';
     
-    // SOLO estas claves se asignan masivamente (llenar/constructor)
-    // NUNCA rol ni api_token desde POST/JSON público
     protected static array $rellenables = [
         'nombre',
         'apellido',
@@ -35,9 +33,10 @@ class Usuario extends ModeloBase
 
     public static function buscarPorToken(string $token): ?self
     {
-        // TODO: En tarea C7 se guardará el hash del token (sha256).
         if (empty($token)) return null;
-        return static::consultar()->donde('api_token', '=', $token)->primero();
+        // C7: Buscar por hash SHA-256 (nunca en claro)
+        $hash = hash('sha256', $token);
+        return static::consultar()->donde('api_token', '=', $hash)->primero();
     }
 
     public function verificarPassword(string $password): bool
@@ -48,8 +47,9 @@ class Usuario extends ModeloBase
     public function generarToken(): string
     {
         $token = bin2hex(random_bytes(32));
-        $this->api_token = $token;
+        // C7: Guardar SOLO el hash, nunca el token en claro
+        $this->api_token = hash('sha256', $token);
         $this->guardar();
-        return $token;
+        return $token; // Se muestra UNA vez
     }
 }
