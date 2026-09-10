@@ -8,6 +8,7 @@ use App\Nucleo\LimitadorIntentos;
 use App\Nucleo\Aplicacion;
 use App\Nucleo\HelperCsrf;
 use App\Modelos\Usuario;
+
 class AuthControlador extends ControladorBase
 {
     public function formularioLogin(): void
@@ -22,12 +23,14 @@ class AuthControlador extends ControladorBase
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
         if ($ip === '::1') $ip = '127.0.0.1';
+        $email = trim($_POST['email'] ?? '');
+        
         $cfg = Aplicacion::obtenerInstancia()->obtenerConfiguracion('app');
         $max = $cfg['seguridad']['maximos_intentos_login'] ?? 5;
         $tmp = $cfg['seguridad']['tiempo_bloqueo_login'] ?? 60;
         
-        if (LimitadorIntentos::estaBloqueado($ip, $max, $tmp)) {
-            $r = LimitadorIntentos::tiempoRestante($ip, $max, $tmp);
+        if (LimitadorIntentos::estaBloqueado($ip, $email, $max, $tmp)) {
+            $r = LimitadorIntentos::tiempoRestante($ip, $email, $max, $tmp);
             $m = intdiv($r, 60);
             $s = $r % 60;
             $msg = $m > 0 ? "Espere {$m}min {$s}s" : "Espere {$s}s";
@@ -47,25 +50,32 @@ class AuthControlador extends ControladorBase
         if (!$v->validar()) {
             $this->renderizar('login', [
                 'titulo' => 'Iniciar Sesión',
-                'error'  => implode('<br>', $v->obtenerErrores())
+                'error'  => implode(' | ', $v->obtenerErrores())
             ], 'plantilla', false);
             return;
         }
         
-        $usuario = Usuario::buscarPorEmail($_POST['email']);
+        $usuario = Usuario::buscarPorEmail($email);
         
         if ($usuario && $usuario->verificarPassword($_POST['password'])) {
-            LimitadorIntentos::reiniciarIntentos($ip);
-            
-            // Regenerar token CSRF para nueva sesión
+            LimitadorIntentos::reiniciarIntentos($ip, $email);
             HelperCsrf::destruirYRegenerar();
             
-            Autenticacion::iniciarSesion($usuario->aArray());
+            // FIX: Construir array con id explícito
+            $datosUsuario = [
+                'id'       => $usuario->id,
+                'nombre'   => $usuario->nombre,
+                'apellido' => $usuario->apellido,
+                'email'    => $usuario->email,
+                'rol'      => $usuario->rol
+            ];
+            
+            Autenticacion::iniciarSesion($datosUsuario);
             header('Location: ' . $this->obtenerUrlBase() . '/');
             exit;
         }
         
-        LimitadorIntentos::registrarIntento($ip);
+        LimitadorIntentos::registrarIntento($ip, $email);
         $this->renderizar('login', [
             'titulo' => 'Iniciar Sesión',
             'error'  => 'Credenciales inválidas.'
@@ -86,6 +96,7 @@ class AuthControlador extends ControladorBase
         $usuario = Usuario::buscarPorEmail($datos['email']);
         
         if ($usuario && $usuario->verificarPassword($datos['password'])) {
+            // C7: Token se muestra UNA vez (en BD se guarda hash)
             $token = $usuario->generarToken();
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode([
@@ -129,7 +140,7 @@ class AuthControlador extends ControladorBase
         if (!$v->validar()) {
             $this->renderizar('registro', [
                 'titulo' => 'Crear Cuenta',
-                'error'  => implode('<br>', $v->obtenerErrores())
+                'error'  => implode(' | ', $v->obtenerErrores())
             ], 'plantilla', false);
             return;
         }
@@ -142,10 +153,18 @@ class AuthControlador extends ControladorBase
         $usuario = new Usuario($datos);
         
         if ($usuario->guardar()) {
-            // Regenerar token CSRF para nueva sesión
             HelperCsrf::destruirYRegenerar();
             
-            Autenticacion::iniciarSesion($usuario->aArray());
+            // FIX: Construir array con id explícito
+            $datosUsuario = [
+                'id'       => $usuario->id,
+                'nombre'   => $usuario->nombre,
+                'apellido' => $usuario->apellido,
+                'email'    => $usuario->email,
+                'rol'      => $usuario->rol
+            ];
+            
+            Autenticacion::iniciarSesion($datosUsuario);
             header('Location: ' . $this->obtenerUrlBase() . '/');
             exit;
         }
