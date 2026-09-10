@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 error_reporting(E_ALL);
-// Mostrar errores solo en desarrollo
 $entornoSolicitado = $_POST['app_entorno'] ?? $_GET['entorno'] ?? 'desarrollo';
 if ($entornoSolicitado === 'desarrollo') {
     ini_set('display_errors', '1');
@@ -23,7 +22,6 @@ $dirRutas = $dirRaiz . '/app/rutas';
 $dirPublic = $dirRaiz . '/public';
 $lockFile = $dirAlmacen . '/instalado.lock';
 
-// ==================== BLOQUEO SI YA ESTÁ INSTALADO ====================
 if (file_exists($lockFile)) {
     http_response_code(403);
     echo "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"><title>Instalación completada</title>
@@ -36,7 +34,6 @@ if (file_exists($lockFile)) {
     exit;
 }
 
-// ==================== FUNCIONES ====================
 function verificarRequisitos(): array
 {
     return [
@@ -73,7 +70,6 @@ function listarBasesDatos(string $usuario, string $clave): array
     }
 }
 
-// ==================== PROCESAR INSTALACIÓN ====================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
     $db_nombre = $_POST['db_nombre'] ?? '';
     $db_usuario = $_POST['db_usuario'] ?? 'root';
@@ -83,7 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
     $insertarDatos = isset($_POST['datos_prueba']) && $_POST['datos_prueba'] === '1';
     $accionBD = $_POST['accion_bd'] ?? 'crear';
 
-    // Validar nombre de BD
     if (!preg_match('/^[a-zA-Z0-9_]+$/', $db_nombre)) {
         $errores[] = 'Nombre de base de datos inválido. Solo letras, números y guiones bajos.';
     }
@@ -91,8 +86,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
     if (empty($errores)) {
         try {
             $pdo = new PDO("mysql:host=localhost;charset=utf8mb4", $db_usuario, $db_clave, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            
-            // Verificar si la BD existe
             $stmt = $pdo->prepare("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
             $stmt->execute([$db_nombre]);
             $bdExiste = (bool) $stmt->fetch();
@@ -106,7 +99,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
             }
             $pdo->exec("USE `$db_nombre`");
 
-            // Crear tablas
             $pdo->exec("CREATE TABLE IF NOT EXISTS usuarios (
                 id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(50) NOT NULL, apellido VARCHAR(50) NOT NULL,
                 email VARCHAR(100) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL DEFAULT '',
@@ -130,7 +122,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
                 ejecutada_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-            // Datos de prueba
             if ($insertarDatos) {
                 $pw = password_hash('password', PASSWORD_BCRYPT);
                 $pdo->exec("INSERT INTO usuarios (nombre, apellido, email, password, rol, edad) VALUES 
@@ -141,7 +132,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
                     ON DUPLICATE KEY UPDATE email=email");
             }
 
-            // Crear SOLO directorios de datos (NO toca app/Nucleo/)
             $directorios = [
                 $dirConfig,
                 $dirAlmacen . '/logs',
@@ -154,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
                 if (!is_dir($dir)) mkdir($dir, 0775, true);
             }
 
-            // Config con var_export (SEGURO - sin interpolación)
             $configBD = "<?php\n\nreturn " . var_export([
                 'motor' => 'mysql',
                 'host' => 'localhost',
@@ -191,14 +180,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
             ], true) . ";\n";
             file_put_contents($dirConfig . '/aplicacion.php', $configApp);
 
-            // Crear .htaccess si no existe
             $hr = $dirProyecto . '/.htaccess';
             if (!file_exists($hr)) {
                 file_put_contents($hr, "Options -Indexes\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteBase /$nombreProyecto/\nRewriteRule ^\$ raizphp/public/ [L]\nRewriteCond %{REQUEST_FILENAME} -f\nRewriteRule ^ - [L]\nRewriteRule ^(.*)\$ raizphp/public/\$1 [L]\n</IfModule>\n");
                 chmod($hr, 0664);
             }
 
-            // Crear lock de instalación
             file_put_contents($lockFile, date('Y-m-d H:i:s'));
 
             $exito = '¡Instalación completada! Por seguridad, elimina public/instalar.php.';
@@ -212,7 +199,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
     }
 }
 
-// ==================== VERIFICAR BD EN PASO 2 ====================
 $basesExistentes = [];
 if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verificar_bd'])) {
     $basesExistentes = listarBasesDatos(
@@ -220,7 +206,6 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
         $_POST['db_clave'] ?? ''
     );
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -259,6 +244,10 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
         .ruta-info{background:#f1f5f9;padding:.8rem;border-radius:var(--redondeado);margin-bottom:1rem;font-size:.85rem;text-align:center;color:#475569}
         .opcion-bd{display:block;padding:0.6rem;border:2px solid #e2e8f0;border-radius:0.5rem;margin-bottom:0.3rem;cursor:pointer;font-size:0.9rem}
         .opcion-bd:hover{border-color:var(--color-primario)}
+        .btn-verificar{display:none;margin-top:0.5rem;width:100%;padding:0.5rem;background:#7c3aed;color:white;border:none;border-radius:0.5rem;font-size:0.9rem;cursor:pointer}
+        .btn-verificar.visible{display:block}
+        .chip-bd{background:#ede9fe;color:#5b21b6;padding:0.3rem 0.7rem;border-radius:1rem;font-size:0.8rem;cursor:pointer;border:1px solid #c4b5fd}
+        .chip-bd:hover{background:#c4b5fd}
     </style>
 </head>
 <body>
@@ -290,8 +279,7 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
             <strong>📂 Bases de datos encontradas:</strong>
             <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;">
                 <?php foreach ($basesExistentes as $bd): ?>
-                <span style="background:#ede9fe;color:#5b21b6;padding:0.3rem 0.7rem;border-radius:1rem;font-size:0.8rem;cursor:pointer;border:1px solid #c4b5fd;"
-                      onclick="document.getElementById('db_nombre').value='<?= htmlspecialchars($bd) ?>';document.getElementById('accion_usar').checked=true;">
+                <span class="chip-bd" onclick="seleccionarBD('<?= htmlspecialchars($bd) ?>')">
                     📁 <?= htmlspecialchars($bd) ?>
                 </span>
                 <?php endforeach; ?>
@@ -306,8 +294,11 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
             
             <div class="campo" style="background:#f8fafc;padding:.8rem;border-radius:0.5rem;border:1px solid #e2e8f0;">
                 <label>🔄 Acción con la base de datos</label>
-                <label class="opcion-bd"><input type="radio" name="accion_bd" value="crear" checked> <strong>🆕 Crear nueva base de datos</strong></label>
-                <label class="opcion-bd"><input type="radio" name="accion_bd" value="usar_existente" id="accion_usar"> <strong>📂 Usar base de datos existente</strong></label>
+                <label class="opcion-bd"><input type="radio" name="accion_bd" value="crear" checked onchange="toggleVerificar()"> <strong>🆕 Crear nueva base de datos</strong></label>
+                <label class="opcion-bd"><input type="radio" name="accion_bd" value="usar_existente" id="accion_usar" onchange="toggleVerificar()"> <strong>📂 Usar base de datos existente</strong></label>
+                <button type="button" id="btn-verificar" class="btn-verificar" onclick="verificarBases()">
+                    🔍 Verificar bases de datos existentes
+                </button>
             </div>
             
             <div class="campo"><label>Usuario MySQL</label><input type="text" name="db_usuario" id="db_usuario" value="root" required></div>
@@ -315,16 +306,26 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
             <div class="campo"><label>Entorno</label><select name="app_entorno"><option value="desarrollo">Desarrollo</option><option value="produccion">Producción</option></select></div>
             <div class="campo"><label class="checkbox-label"><input type="checkbox" name="datos_prueba" value="1" checked>Insertar datos de prueba</label></div>
             
-            <div class="campo">
-                <button type="button" class="boton" style="background:#7c3aed;font-size:0.9rem;padding:0.5rem;" onclick="verificarBases()">
-                    🔍 Verificar bases de datos existentes
-                </button>
-            </div>
-            
             <div class="botones"><a href="?paso=1" class="boton boton-cancelar">← Atrás</a><button type="submit" class="boton">Instalar 🚀</button></div>
         </form>
         
         <script>
+        function toggleVerificar() {
+            var usarExistente = document.getElementById('accion_usar').checked;
+            var btn = document.getElementById('btn-verificar');
+            if (usarExistente) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        }
+        
+        function seleccionarBD(nombre) {
+            document.getElementById('db_nombre').value = nombre;
+            document.getElementById('accion_usar').checked = true;
+            toggleVerificar();
+        }
+        
         function verificarBases() {
             var usuario = document.getElementById('db_usuario').value;
             var clave = document.getElementById('db_clave').value;
@@ -335,6 +336,9 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
             var i3 = document.createElement('input'); i3.type = 'hidden'; i3.name = 'verificar_bd'; i3.value = '1'; form.appendChild(i3);
             document.body.appendChild(form); form.submit();
         }
+        
+        // Ejecutar al cargar por si el radio ya estaba seleccionado
+        toggleVerificar();
         </script>
 
     <?php elseif ($paso === 'finalizado'): ?>

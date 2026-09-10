@@ -216,4 +216,4 @@ class ConstructorConsulta
         if ($this->clausulas['desplazamiento'] !== null) $sql .= ' OFFSET ' . $this->clausulas['desplazamiento'];
         return $sql;
     }
-}}
+}
