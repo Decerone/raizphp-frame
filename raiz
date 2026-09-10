@@ -640,9 +640,15 @@ function infoProyecto(string $dir): array {
     return [C_CYAN."📋 Proyecto:".C_RESET,"   Nombre: ".C_AMARILLO.($c['nombre']??'N/A').C_RESET,"   Entorno: ".C_AMARILLO.($c['entorno']??'N/A').C_RESET,"   PHP: ".C_AMARILLO.PHP_VERSION.C_RESET];
 }
 
+
 function cambiarEntorno(string $dir, ?string $e): array {
-    if (!$e) { $c = require $dir.'/config/aplicacion.php'; return [C_CYAN."Entorno: ".C_AMARILLO.($c['entorno']??'N/A').C_RESET]; }
-    file_put_contents($dir.'/config/aplicacion.php', preg_replace("/'entorno'\s*=>\s*'[^']*'/", "'entorno' => '$e'", file_get_contents($dir.'/config/aplicacion.php')));
+    if (!$e) {
+        $c = require $dir.'/config/aplicacion.php';
+        return [C_CYAN."Entorno: ".C_AMARILLO.($c['entorno'] ?? 'N/A').C_RESET];
+    }
+    file_put_contents(
+        $dir.'/config/aplicacion.php',
+        preg_replace("/'entorno'\s*=>\s*'[^']*'/", "'entorno' => '$e'", file_get_contents($dir.'/config/aplicacion.php'))
+    );
     return [C_VERDE."✅ Entorno → $e".C_RESET];
-}    return $x === 0 ? [C_VERDE."✅ Restaurado.".C_RESET] : [C_ROJO."❌ Error al restaurar.".C_RESET];
 }
