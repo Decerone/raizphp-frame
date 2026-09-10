@@ -40,6 +40,22 @@ class ConstructorConsulta
         return $operador;
     }
     
+    private function citar(string $identificador): string
+    {
+        // Identificadores calificados (tabla.columna) se citan por partes
+        if (strpos($identificador, '.') !== false) {
+            [$t, $c] = explode('.', $identificador, 2);
+            return $this->citarIdentificador($t) . '.' . $this->citarIdentificador($c);
+        }
+        return $this->citarIdentificador($identificador);
+    }
+    
+    private function citarIdentificador(string $nombre): string
+    {
+        $conexion = Aplicacion::obtenerInstancia()->obtenerConexion();
+        return $conexion->citar($nombre);
+    }
+    
     public function seleccionar(string $columnas = '*'): self
     {
         if ($columnas !== '*') {
@@ -98,7 +114,7 @@ class ConstructorConsulta
     
     public function contar(): int
     {
-        $sql = "SELECT COUNT(*) as total FROM {$this->tabla}" . $this->construirUniones() . $this->construirWhere();
+        $sql = "SELECT COUNT(*) as total FROM " . $this->citarTabla() . $this->construirUniones() . $this->construirWhere();
         $pdo = Aplicacion::obtenerInstancia()->obtenerConexion()->obtenerPDO();
         $stmt = $pdo->prepare($sql);
         $stmt->execute($this->parametros);
@@ -114,14 +130,22 @@ class ConstructorConsulta
         $cache = new Cache();
         $claveCache = Cache::claveConsulta($sql, $this->parametros);
         $resultadoCache = $cache->obtener($claveCache);
-        if ($resultadoCache !== null) return $resultadoCache;
+        if ($resultadoCache !== null) {
+            // Reconstruir modelos desde arrays cacheados
+            $modelos = [];
+            foreach ($resultadoCache as $fila) {
+                $clase = $this->claseModelo;
+                $modelos[] = new $clase($fila);
+            }
+            return $modelos;
+        }
         $pdo = Aplicacion::obtenerInstancia()->obtenerConexion()->obtenerPDO();
         $stmt = $pdo->prepare($sql);
         $stmt->execute($this->parametros);
         $filas = $stmt->fetchAll();
         $modelos = [];
         foreach ($filas as $fila) $modelos[] = new $this->claseModelo($fila);
-        $cache->guardar($claveCache, $modelos, 300);
+        $cache->guardar($claveCache, $filas, 300);
         return $modelos;
     }
     
@@ -131,7 +155,6 @@ class ConstructorConsulta
         $resultados = $this->obtener();
         if (empty($resultados)) return null;
         $primero = $resultados[0];
-        // Si viene de caché (array), reconstruir el modelo
         if (is_array($primero)) {
             $clase = $this->claseModelo;
             return new $clase($primero);
@@ -141,10 +164,23 @@ class ConstructorConsulta
     
     public function insertar(array $datos): int|string
     {
-        $columnas = implode(', ', array_map(fn($col) => $this->validarIdentificador($col), array_keys($datos)));
+        $conexion = Aplicacion::obtenerInstancia()->obtenerConexion();
+        $pdo = $conexion->obtenerPDO();
+        
+        $columnas = implode(', ', array_map(fn($col) => $conexion->citar($col), array_keys($datos)));
         $marcadores = implode(', ', array_fill(0, count($datos), '?'));
-        $sql = "INSERT INTO {$this->tabla} ($columnas) VALUES ($marcadores)";
-        $pdo = Aplicacion::obtenerInstancia()->obtenerConexion()->obtenerPDO();
+        
+        // PostgreSQL y SQLite: usar RETURNING
+        if ($conexion->soportaReturning()) {
+            $sql = "INSERT INTO " . $this->citarTabla() . " ($columnas) VALUES ($marcadores) RETURNING id";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(array_values($datos));
+            $resultado = $stmt->fetch();
+            return $resultado['id'] ?? 0;
+        }
+        
+        // MySQL: usar lastInsertId
+        $sql = "INSERT INTO " . $this->citarTabla() . " ($columnas) VALUES ($marcadores)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array_values($datos));
         return $pdo->lastInsertId();
@@ -155,11 +191,12 @@ class ConstructorConsulta
         if (!$this->tieneWhere) {
             throw new \RuntimeException("UPDATE sin WHERE no está permitido.");
         }
-        $asignaciones = implode(', ', array_map(fn($col) => $this->validarIdentificador($col) . " = ?", array_keys($datos)));
+        $conexion = Aplicacion::obtenerInstancia()->obtenerConexion();
+        $asignaciones = implode(', ', array_map(fn($col) => $conexion->citar($col) . " = ?", array_keys($datos)));
         $valores = array_values($datos);
         $this->parametros = array_merge($valores, $this->parametros);
-        $sql = "UPDATE {$this->tabla} SET $asignaciones" . $this->construirWhere();
-        $pdo = Aplicacion::obtenerInstancia()->obtenerConexion()->obtenerPDO();
+        $sql = "UPDATE " . $this->citarTabla() . " SET $asignaciones" . $this->construirWhere();
+        $pdo = $conexion->obtenerPDO();
         $stmt = $pdo->prepare($sql);
         $stmt->execute($this->parametros);
         return $stmt->rowCount();
@@ -170,23 +207,32 @@ class ConstructorConsulta
         if (!$this->tieneWhere) {
             throw new \RuntimeException("DELETE sin WHERE no está permitido.");
         }
-        $sql = "DELETE FROM {$this->tabla}" . $this->construirWhere();
+        $sql = "DELETE FROM " . $this->citarTabla() . $this->construirWhere();
         $pdo = Aplicacion::obtenerInstancia()->obtenerConexion()->obtenerPDO();
         $stmt = $pdo->prepare($sql);
         $stmt->execute($this->parametros);
         return $stmt->rowCount();
     }
     
+    private function citarTabla(): string
+    {
+        $conexion = Aplicacion::obtenerInstancia()->obtenerConexion();
+        return $conexion->citar($this->tabla);
+    }
+    
     private function construirSelect(): string
     {
-        return "SELECT {$this->clausulas['seleccion']} FROM {$this->tabla}" . $this->construirUniones() . $this->construirWhere() . $this->construirOrden() . $this->construirLimite();
+        $seleccion = $this->clausulas['seleccion'];
+        return "SELECT $seleccion FROM " . $this->citarTabla() . $this->construirUniones() . $this->construirWhere() . $this->construirOrden() . $this->construirLimite();
     }
     
     private function construirUniones(): string
     {
         $sql = '';
+        $conexion = Aplicacion::obtenerInstancia()->obtenerConexion();
         foreach ($this->clausulas['uniones'] as $u) {
-            $sql .= " {$u[4]} JOIN {$u[0]} ON {$u[1]} {$u[2]} {$u[3]}";
+            $tabla = $conexion->citar($u[0]);
+            $sql .= " {$u[4]} JOIN $tabla ON {$u[1]} {$u[2]} {$u[3]}";
         }
         return $sql;
     }

@@ -18,14 +18,17 @@
         "orm": {
             "nombre": "NaturalORM",
             "version": "1.0.0",
-            "descripcion": "Query Builder en español con métodos fluidos, consultas preparadas y caché automática. Interacción natural con la base de datos para hispanohablantes.",
+            "descripcion": "Query Builder en español con métodos fluidos, consultas preparadas y caché automática. Soporte multi-motor (MySQL, PostgreSQL, SQLite).",
             "metodos": 30,
-            "bases_datos": ["MySQL"],
+            "bases_datos": ["MySQL", "PostgreSQL", "SQLite"],
             "caracteristicas": [
                 "CRUD completo en español",
                 "Query Builder fluido (method chaining)",
                 "Consultas preparadas (anti SQL Injection)",
                 "Caché automática de consultas con invalidación",
+                "Multi-motor: MySQL, PostgreSQL, SQLite",
+                "Identificadores escapados por motor",
+                "INSERT con RETURNING (pgsql/sqlite)",
                 "JOINs (INNER, LEFT, RIGHT)",
                 "Funciones agregadas (COUNT, SUM, AVG, MAX, MIN)",
                 "Paginación automática",
@@ -88,8 +91,15 @@
     },
     "requisitos": {
         "php": "8.0+",
-        "extensiones": ["PDO", "PDO_MySQL", "OpenSSL", "mbstring", "JSON"],
+        "extensiones": ["PDO", "OpenSSL", "mbstring", "JSON"],
+        "extensiones_motor": {
+            "mysql": "PDO_MySQL",
+            "pgsql": "PDO_PGSQL",
+            "sqlite": "PDO_SQLITE"
+        },
         "mysql": "5.7+",
+        "postgresql": "10+",
+        "sqlite": "3.0+",
         "apache": "2.4+",
         "mod_rewrite": true
     },

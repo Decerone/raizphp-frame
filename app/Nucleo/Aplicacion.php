@@ -4,11 +4,9 @@ namespace App\Nucleo;
 use App\Middleware\MiddlewareCors;
 use App\Middleware\MiddlewareCsrf;
 use App\Middleware\MiddlewareRegistro;
-use App\Middleware\MiddlewareAutenticacion;
 use App\Middleware\MiddlewareSeguridad;
-use App\Middleware\MiddlewareRol;
 use App\Middleware\MiddlewareHttps;
-use App\Middleware\MiddlewareApiAuth;
+
 class Aplicacion
 {
     private static ?Aplicacion $instancia = null;
@@ -37,11 +35,13 @@ class Aplicacion
     public static function obtenerInstancia(): self { return self::$instancia; }
     public function obtenerDirectorioRaiz(): string { return $this->directorioRaiz; }
     public function obtenerConfiguracion(string $clave, $porDefecto = null) { return $this->configuracion[$clave] ?? $porDefecto; }
+    
     public function obtenerConexion(): Conexion
     {
         if ($this->conexion === null) $this->conexion = new Conexion($this->configuracion['base_datos']);
         return $this->conexion;
     }
+    
     public function obtenerRenderizador(): Renderizador { return $this->renderizador; }
     
     private function cargarConfiguracion(): void
@@ -72,13 +72,15 @@ class Aplicacion
         $this->enrutador->usarMiddleware(new MiddlewareCors());
         $this->enrutador->usarMiddleware(new MiddlewareSeguridad());
         $this->enrutador->usarMiddleware(new MiddlewareCsrf());
-        $this->enrutador->usarMiddleware(new MiddlewareAutenticacion());
+        // D7: MiddlewareAutenticacion y MiddlewareRol ya NO son globales.
+        // Se aplican por ruta con agregarMiddlewareRuta().
     }
     
     public function ejecutar(): void
     {
         try {
-            $this->enrutador->despachar($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+            $peticion = new Peticion();
+            $this->enrutador->despachar($peticion);
         } catch (\Throwable $e) {
             error_log('Error 500: ' . $e->getMessage());
             if (isset($this->renderizador)) {

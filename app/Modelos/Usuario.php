@@ -15,6 +15,15 @@ class Usuario extends ModeloBase
         'password',
         'edad'
     ];
+    
+    // D3: Campos que NO se exponen en aArray()
+    protected static array $ocultos = ['password', 'api_token'];
+    
+    // D3: Conversión automática de tipos
+    protected static array $casts = [
+        'id' => 'int',
+        'edad' => 'int'
+    ];
 
     public function nombreCompleto(): string
     {
@@ -34,22 +43,22 @@ class Usuario extends ModeloBase
     public static function buscarPorToken(string $token): ?self
     {
         if (empty($token)) return null;
-        // C7: Buscar por hash SHA-256 (nunca en claro)
         $hash = hash('sha256', $token);
         return static::consultar()->donde('api_token', '=', $hash)->primero();
     }
 
     public function verificarPassword(string $password): bool
     {
-        return password_verify($password, $this->password ?? '');
+        // Usamos aArrayCompleto porque password está en $ocultos
+        $hash = $this->atributos['password'] ?? '';
+        return password_verify($password, $hash);
     }
 
     public function generarToken(): string
     {
         $token = bin2hex(random_bytes(32));
-        // C7: Guardar SOLO el hash, nunca el token en claro
         $this->api_token = hash('sha256', $token);
         $this->guardar();
-        return $token; // Se muestra UNA vez
+        return $token;
     }
 }

@@ -39,9 +39,9 @@ class Autenticacion
     }
     
     public static function hashearPassword(string $password): string
-    {
-        return password_hash($password, PASSWORD_BCRYPT);
-    }
+	{
+	    return password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+	}
     
     public static function verificarPassword(string $password, string $hash): bool
     {

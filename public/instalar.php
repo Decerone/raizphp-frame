@@ -40,6 +40,7 @@ function verificarRequisitos(): array
         ['nombre' => 'PHP 8.0+', 'estado' => version_compare(PHP_VERSION, '8.0.0', '>='), 'actual' => PHP_VERSION],
         ['nombre' => 'PDO', 'estado' => extension_loaded('pdo'), 'actual' => extension_loaded('pdo') ? 'Instalado' : 'No'],
         ['nombre' => 'PDO MySQL', 'estado' => extension_loaded('pdo_mysql'), 'actual' => extension_loaded('pdo_mysql') ? 'Instalado' : 'No'],
+        ['nombre' => 'PDO PostgreSQL', 'estado' => extension_loaded('pdo_pgsql'), 'actual' => extension_loaded('pdo_pgsql') ? 'Instalado' : 'Opcional'],
         ['nombre' => 'OpenSSL', 'estado' => extension_loaded('openssl'), 'actual' => extension_loaded('openssl') ? 'Instalado' : 'No'],
         ['nombre' => 'mbstring', 'estado' => extension_loaded('mbstring'), 'actual' => extension_loaded('mbstring') ? 'Instalado' : 'No'],
         ['nombre' => 'JSON', 'estado' => extension_loaded('json'), 'actual' => extension_loaded('json') ? 'Instalado' : 'No'],
@@ -47,20 +48,34 @@ function verificarRequisitos(): array
     ];
 }
 
-function listarBasesDatos(string $usuario, string $clave): array
+function listarBasesDatos(string $motor, string $usuario, string $clave): array
 {
     try {
-        $pdo = new PDO("mysql:host=localhost;charset=utf8mb4", $usuario, $clave, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_TIMEOUT => 5
-        ]);
-        $stmt = $pdo->query("SHOW DATABASES");
-        $bases = [];
-        $sistema = ['information_schema', 'mysql', 'performance_schema', 'sys', 'phpmyadmin'];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $nombreBD = $row['Database'];
-            if (!in_array(strtolower($nombreBD), $sistema)) {
-                $bases[] = $nombreBD;
+        if ($motor === 'pgsql') {
+            $pdo = new PDO("pgsql:host=localhost;port=5432", $usuario, $clave, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 5
+            ]);
+            $stmt = $pdo->query("SELECT datname FROM pg_database WHERE datistemplate = false");
+            $bases = [];
+            $sistema = ['postgres', 'template0', 'template1'];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                if (!in_array(strtolower($row['datname']), $sistema)) {
+                    $bases[] = $row['datname'];
+                }
+            }
+        } else {
+            $pdo = new PDO("mysql:host=localhost;charset=utf8mb4", $usuario, $clave, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 5
+            ]);
+            $stmt = $pdo->query("SHOW DATABASES");
+            $bases = [];
+            $sistema = ['information_schema', 'mysql', 'performance_schema', 'sys', 'phpmyadmin'];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                if (!in_array(strtolower($row['Database']), $sistema)) {
+                    $bases[] = $row['Database'];
+                }
             }
         }
         sort($bases);
@@ -70,7 +85,62 @@ function listarBasesDatos(string $usuario, string $clave): array
     }
 }
 
+/**
+ * Genera el SQL para crear las tablas según el motor.
+ */
+function obtenerSQLTablas(string $motor, bool $insertarDatos): array
+{
+    if ($motor === 'pgsql') {
+        $sqls = [
+            "CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY, nombre VARCHAR(50) NOT NULL, apellido VARCHAR(50) NOT NULL,
+                email VARCHAR(100) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL DEFAULT '',
+                api_token VARCHAR(64) NULL UNIQUE, rol VARCHAR(20) NOT NULL DEFAULT 'usuario', edad INT NOT NULL
+            )",
+            "CREATE TABLE IF NOT EXISTS intentos_login (
+                id SERIAL PRIMARY KEY, ip VARCHAR(45) NOT NULL,
+                intentos INT NOT NULL DEFAULT 1, ultimo_intento INT NOT NULL
+            )",
+            "CREATE INDEX IF NOT EXISTS idx_ip ON intentos_login (ip)",
+            "CREATE TABLE IF NOT EXISTS recuperaciones (
+                id SERIAL PRIMARY KEY, usuario_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE,
+                expiracion INT NOT NULL, usado SMALLINT NOT NULL DEFAULT 0,
+                creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+            )",
+            "CREATE TABLE IF NOT EXISTS migraciones (
+                id SERIAL PRIMARY KEY, nombre VARCHAR(255) NOT NULL UNIQUE,
+                ejecutada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )"
+        ];
+    } else {
+        $sqls = [
+            "CREATE TABLE IF NOT EXISTS usuarios (
+                id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(50) NOT NULL, apellido VARCHAR(50) NOT NULL,
+                email VARCHAR(100) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL DEFAULT '',
+                api_token VARCHAR(64) NULL UNIQUE, rol VARCHAR(20) NOT NULL DEFAULT 'usuario', edad INT NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE IF NOT EXISTS intentos_login (
+                id INT AUTO_INCREMENT PRIMARY KEY, ip VARCHAR(45) NOT NULL,
+                intentos INT NOT NULL DEFAULT 1, ultimo_intento INT NOT NULL, INDEX idx_ip (ip)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE IF NOT EXISTS recuperaciones (
+                id INT AUTO_INCREMENT PRIMARY KEY, usuario_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE,
+                expiracion INT NOT NULL, usado TINYINT(1) NOT NULL DEFAULT 0,
+                creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE IF NOT EXISTS migraciones (
+                id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(255) NOT NULL UNIQUE,
+                ejecutada_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        ];
+    }
+    return $sqls;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
+    $db_motor = $_POST['db_motor'] ?? 'mysql';
     $db_nombre = $_POST['db_nombre'] ?? '';
     $db_usuario = $_POST['db_usuario'] ?? 'root';
     $db_clave = $_POST['db_clave'] ?? '';
@@ -78,58 +148,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
     $app_entorno = $_POST['app_entorno'] ?? 'desarrollo';
     $insertarDatos = isset($_POST['datos_prueba']) && $_POST['datos_prueba'] === '1';
     $accionBD = $_POST['accion_bd'] ?? 'crear';
+    
+    $puerto = ($db_motor === 'pgsql') ? 5432 : 3306;
 
     if (!preg_match('/^[a-zA-Z0-9_]+$/', $db_nombre)) {
         $errores[] = 'Nombre de base de datos inválido. Solo letras, números y guiones bajos.';
     }
+    
+    if (!in_array($db_motor, ['mysql', 'pgsql'], true)) {
+        $errores[] = 'Motor no soportado.';
+    }
 
     if (empty($errores)) {
         try {
-            $pdo = new PDO("mysql:host=localhost;charset=utf8mb4", $db_usuario, $db_clave, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            $stmt = $pdo->prepare("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
-            $stmt->execute([$db_nombre]);
-            $bdExiste = (bool) $stmt->fetch();
-            
-            if ($bdExiste && $accionBD === 'crear') {
-                throw new Exception("La base de datos \"$db_nombre\" ya existe. Selecciona 'Usar existente' o elige otro nombre.");
+            if ($db_motor === 'pgsql') {
+                $pdo = new PDO("pgsql:host=localhost;port={$puerto}", $db_usuario, $db_clave, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                $stmt = $pdo->prepare("SELECT 1 FROM pg_database WHERE datname = ?");
+                $stmt->execute([$db_nombre]);
+                $bdExiste = (bool) $stmt->fetch();
+                
+                if ($bdExiste && $accionBD === 'crear') {
+                    throw new Exception("La base de datos \"$db_nombre\" ya existe. Selecciona 'Usar existente' o elige otro nombre.");
+                }
+                
+                if ($accionBD === 'crear') {
+                    $pdo->exec("CREATE DATABASE \"$db_nombre\"");
+                }
+                
+                $pdo = new PDO("pgsql:host=localhost;port={$puerto};dbname={$db_nombre}", $db_usuario, $db_clave, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            } else {
+                $pdo = new PDO("mysql:host=localhost;port={$puerto};charset=utf8mb4", $db_usuario, $db_clave, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                $stmt = $pdo->prepare("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+                $stmt->execute([$db_nombre]);
+                $bdExiste = (bool) $stmt->fetch();
+                
+                if ($bdExiste && $accionBD === 'crear') {
+                    throw new Exception("La base de datos \"$db_nombre\" ya existe. Selecciona 'Usar existente' o elige otro nombre.");
+                }
+                
+                if ($accionBD === 'crear') {
+                    $pdo->exec("CREATE DATABASE IF NOT EXISTS `$db_nombre` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                }
+                $pdo->exec("USE `$db_nombre`");
             }
-            
-            if ($accionBD === 'crear') {
-                $pdo->exec("CREATE DATABASE IF NOT EXISTS `$db_nombre` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+            // Crear tablas
+            foreach (obtenerSQLTablas($db_motor, $insertarDatos) as $sql) {
+                $pdo->exec($sql);
             }
-            $pdo->exec("USE `$db_nombre`");
 
-            $pdo->exec("CREATE TABLE IF NOT EXISTS usuarios (
-                id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(50) NOT NULL, apellido VARCHAR(50) NOT NULL,
-                email VARCHAR(100) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL DEFAULT '',
-                api_token VARCHAR(64) NULL UNIQUE, rol VARCHAR(20) NOT NULL DEFAULT 'usuario', edad INT NOT NULL
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
-            $pdo->exec("CREATE TABLE IF NOT EXISTS intentos_login (
-                id INT AUTO_INCREMENT PRIMARY KEY, ip VARCHAR(45) NOT NULL,
-                intentos INT NOT NULL DEFAULT 1, ultimo_intento INT NOT NULL, INDEX idx_ip (ip)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
-            $pdo->exec("CREATE TABLE IF NOT EXISTS recuperaciones (
-                id INT AUTO_INCREMENT PRIMARY KEY, usuario_id INT NOT NULL, token VARCHAR(64) NOT NULL UNIQUE,
-                expiracion INT NOT NULL, usado TINYINT(1) NOT NULL DEFAULT 0,
-                creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
-            $pdo->exec("CREATE TABLE IF NOT EXISTS migraciones (
-                id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(255) NOT NULL UNIQUE,
-                ejecutada_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
+            // Datos de prueba
             if ($insertarDatos) {
-                $pw = password_hash('password', PASSWORD_BCRYPT);
-                $pdo->exec("INSERT INTO usuarios (nombre, apellido, email, password, rol, edad) VALUES 
-                    ('María','Pérez','maria@example.com','$pw','usuario',28),
-                    ('Carlos','Gómez','carlos@example.com','$pw','usuario',35),
-                    ('Ana','Martínez','ana@example.com','$pw','admin',22),
-                    ('Admin','Sistema','admin@raizphp.local','$pw','admin',30)
-                    ON DUPLICATE KEY UPDATE email=email");
+                $pw = password_hash('password', PASSWORD_BCRYPT, ['cost' => 12]);
+                if ($db_motor === 'pgsql') {
+                    $pdo->exec("INSERT INTO usuarios (nombre, apellido, email, password, rol, edad) VALUES 
+                        ('María','Pérez','maria@example.com','$pw','usuario',28),
+                        ('Carlos','Gómez','carlos@example.com','$pw','usuario',35),
+                        ('Ana','Martínez','ana@example.com','$pw','admin',22),
+                        ('Admin','Sistema','admin@raizphp.local','$pw','admin',30)
+                        ON CONFLICT (email) DO NOTHING");
+                } else {
+                    $pdo->exec("INSERT INTO usuarios (nombre, apellido, email, password, rol, edad) VALUES 
+                        ('María','Pérez','maria@example.com','$pw','usuario',28),
+                        ('Carlos','Gómez','carlos@example.com','$pw','usuario',35),
+                        ('Ana','Martínez','ana@example.com','$pw','admin',22),
+                        ('Admin','Sistema','admin@raizphp.local','$pw','admin',30)
+                        ON DUPLICATE KEY UPDATE email=email");
+                }
             }
 
             $directorios = [
@@ -145,9 +230,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
             }
 
             $configBD = "<?php\n\nreturn " . var_export([
-                'motor' => 'mysql',
+                'motor' => $db_motor,
                 'host' => 'localhost',
-                'puerto' => 3306,
+                'puerto' => $puerto,
                 'nombre' => $db_nombre,
                 'usuario' => $db_usuario,
                 'clave' => $db_clave,
@@ -202,6 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $paso === 'instalar') {
 $basesExistentes = [];
 if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verificar_bd'])) {
     $basesExistentes = listarBasesDatos(
+        $_POST['db_motor'] ?? 'mysql',
         $_POST['db_usuario'] ?? 'root',
         $_POST['db_clave'] ?? ''
     );
@@ -253,7 +339,7 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
 <body>
 <div class="contenedor">
     <h1>🌱 RaízPHP</h1>
-    <p class="version">v2.1 - Instalador Seguro</p>
+    <p class="version">v2.1 - Instalador Seguro · Multi-Motor</p>
     <p class="subtitulo">Solo crea config y tablas · El núcleo NO se modifica</p>
 
     <?php if ($paso === '1'): ?>
@@ -263,7 +349,13 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
         <?php foreach (verificarRequisitos() as $req): ?>
             <div class="requisito <?= $req['estado'] ? 'cumple' : 'falla' ?>"><span><?= htmlspecialchars($req['nombre']) ?></span><span><?= htmlspecialchars($req['actual']) ?></span></div>
         <?php endforeach; ?><br>
-        <?php $ok = true; foreach (verificarRequisitos() as $req) if (!$req['estado']) $ok = false; ?>
+        <?php 
+        $ok = true; 
+        foreach (verificarRequisitos() as $req) {
+            // PDO PostgreSQL es opcional
+            if (!$req['estado'] && $req['nombre'] !== 'PDO PostgreSQL') $ok = false;
+        }
+        ?>
         <?php if ($ok): ?>
             <div class="botones"><a href="/<?= htmlspecialchars($nombreProyecto) ?>/" class="boton boton-cancelar">Cancelar</a><a href="?paso=2" class="boton">Continuar →</a></div>
         <?php else: ?>
@@ -290,6 +382,15 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
         
         <form method="POST" action="?paso=instalar">
             <div class="campo"><label>Nombre de la aplicación</label><input type="text" name="app_nombre" value="Mi Aplicación" required></div>
+            
+            <div class="campo">
+                <label>Motor de Base de Datos</label>
+                <select name="db_motor" id="db_motor">
+                    <option value="mysql" selected>🐬 MySQL / MariaDB</option>
+                    <option value="pgsql">🐘 PostgreSQL</option>
+                </select>
+            </div>
+            
             <div class="campo"><label>Nombre de la base de datos</label><input type="text" name="db_nombre" id="db_nombre" value="raiz_db" required pattern="[a-zA-Z0-9_]+"></div>
             
             <div class="campo" style="background:#f8fafc;padding:.8rem;border-radius:0.5rem;border:1px solid #e2e8f0;">
@@ -301,8 +402,8 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
                 </button>
             </div>
             
-            <div class="campo"><label>Usuario MySQL</label><input type="text" name="db_usuario" id="db_usuario" value="root" required></div>
-            <div class="campo"><label>Contraseña MySQL</label><input type="password" name="db_clave" id="db_clave"></div>
+            <div class="campo"><label>Usuario</label><input type="text" name="db_usuario" id="db_usuario" value="root" required></div>
+            <div class="campo"><label>Contraseña</label><input type="password" name="db_clave" id="db_clave"></div>
             <div class="campo"><label>Entorno</label><select name="app_entorno"><option value="desarrollo">Desarrollo</option><option value="produccion">Producción</option></select></div>
             <div class="campo"><label class="checkbox-label"><input type="checkbox" name="datos_prueba" value="1" checked>Insertar datos de prueba</label></div>
             
@@ -327,17 +428,18 @@ if ($paso === '2' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['veri
         }
         
         function verificarBases() {
+            var motor = document.getElementById('db_motor').value;
             var usuario = document.getElementById('db_usuario').value;
             var clave = document.getElementById('db_clave').value;
             var form = document.createElement('form');
             form.method = 'POST'; form.action = '?paso=2';
+            var i0 = document.createElement('input'); i0.type = 'hidden'; i0.name = 'db_motor'; i0.value = motor; form.appendChild(i0);
             var i1 = document.createElement('input'); i1.type = 'hidden'; i1.name = 'db_usuario'; i1.value = usuario; form.appendChild(i1);
             var i2 = document.createElement('input'); i2.type = 'hidden'; i2.name = 'db_clave'; i2.value = clave; form.appendChild(i2);
             var i3 = document.createElement('input'); i3.type = 'hidden'; i3.name = 'verificar_bd'; i3.value = '1'; form.appendChild(i3);
             document.body.appendChild(form); form.submit();
         }
         
-        // Ejecutar al cargar por si el radio ya estaba seleccionado
         toggleVerificar();
         </script>
 

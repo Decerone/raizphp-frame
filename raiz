@@ -157,9 +157,17 @@ switch ($comando) {
 
     case 'servir':
         $puerto = $subcomando ?? '8000';
-        echo C_CYAN."🚀 Servidor en http://localhost:$puerto".C_RESET.PHP_EOL;
+        if (!ctype_digit($puerto) || (int)$puerto < 1024 || (int)$puerto > 65535) {
+            $resultados = [C_ROJO."❌ Puerto inválido. Debe ser un número entre 1024 y 65535.".C_RESET];
+            break;
+        }
+        $puerto = (int) $puerto;
+        echo C_CYAN."🚀 Servidor en http://127.0.0.1:$puerto".C_RESET.PHP_EOL;
         echo C_AMARILLO."Presiona Ctrl+C para detener.".C_RESET.PHP_EOL;
-        exec("php -S localhost:$puerto -t ".$directorioRaiz."/public"); exit;
+        $cmd = ['php', '-S', "127.0.0.1:$puerto", '-t', $directorioRaiz . '/public'];
+        $proc = proc_open($cmd, [], $pipes);
+        if (is_resource($proc)) proc_close($proc);
+        exit;
 
     case 'proyecto:info': $resultados = infoProyecto($directorioRaiz); break;
     case 'proyecto:entorno': $resultados = cambiarEntorno($directorioRaiz, $subcomando); break;
@@ -230,6 +238,35 @@ function mostrarVersion(string $dir): array {
     ];
 }
 
+/**
+ * D6: Solo permite UNA sentencia SQL, sin `;` extra
+ */
+function validarSentenciaUnica(string $sql): bool
+{
+    $sql = trim($sql);
+    // Quitar comentarios de línea
+    $sql = preg_replace('/--.*$/m', '', $sql);
+    $sql = preg_replace('/#.*$/m', '', $sql);
+    $sql = trim($sql);
+    
+    // Contar puntos y coma (debe haber 0 o 1 al final)
+    $sinPuntoComaFinal = rtrim($sql, "; \t\n\r");
+    if (strpos($sinPuntoComaFinal, ';') !== false) {
+        return false; // Hay más de una sentencia
+    }
+    return true;
+}
+
+function contieneComandoPeligroso(string $sql): bool
+{
+    $sql = strtoupper($sql);
+    $peligrosos = ['DROP DATABASE', 'GRANT', 'REVOKE', 'INTO OUTFILE', 'INTO DUMPFILE', 'LOAD_FILE'];
+    foreach ($peligrosos as $p) {
+        if (strpos($sql, $p) !== false) return true;
+    }
+    return false;
+}
+
 function crearTabla(string $dir, string $nombre, string $sqlOArchivo): array
 {
     $cfg = require $dir . '/config/aplicacion.php';
@@ -243,6 +280,12 @@ function crearTabla(string $dir, string $nombre, string $sqlOArchivo): array
     }
     if (stripos(trim($sql), 'CREATE TABLE') !== 0) {
         return [C_ROJO."❌ Solo se permiten sentencias CREATE TABLE.".C_RESET];
+    }
+    if (!validarSentenciaUnica($sql)) {
+        return [C_ROJO."❌ Solo se permite UNA sentencia SQL.".C_RESET];
+    }
+    if (contieneComandoPeligroso($sql)) {
+        return [C_ROJO."❌ La sentencia contiene comandos no permitidos.".C_RESET];
     }
     echo C_AMARILLO . "⚠️  Crear tabla: " . C_CYAN . $nombre . C_RESET . PHP_EOL;
     echo C_AMARILLO . "¿Ejecutar? (s/n): " . C_RESET;
@@ -264,6 +307,9 @@ function ejecutarConsulta(string $dir, string $sql): array
 {
     if (stripos(trim($sql), 'SELECT') !== 0) {
         return [C_ROJO."❌ Solo se permiten consultas SELECT.".C_RESET];
+    }
+    if (!validarSentenciaUnica($sql)) {
+        return [C_ROJO."❌ Solo se permite UNA sentencia SQL.".C_RESET];
     }
     try {
         $db = App\Nucleo\Aplicacion::obtenerInstancia()->obtenerConexion();
@@ -294,10 +340,17 @@ function ejecutarConsulta(string $dir, string $sql): array
 
 function cargarSQL(string $dir, string $nombre, string $archivo): array
 {
+    $cfg = require $dir . '/config/aplicacion.php';
+    if (($cfg['entorno'] ?? 'produccion') !== 'desarrollo') {
+        return [C_ROJO."❌ Solo disponible en entorno desarrollo.".C_RESET];
+    }
     if (!file_exists($archivo)) {
         return [C_ROJO."❌ Archivo no encontrado: {$archivo}".C_RESET];
     }
     $sql = file_get_contents($archivo);
+    if (contieneComandoPeligroso($sql)) {
+        return [C_ROJO."❌ El archivo contiene comandos no permitidos (DROP DATABASE, GRANT, etc.).".C_RESET];
+    }
     echo C_AMARILLO . "⚠️  Cargar: " . C_CYAN . $nombre . C_RESET . PHP_EOL;
     echo C_AMARILLO . "   Archivo: " . basename($archivo) . " (" . strlen($sql) . " bytes)" . C_RESET . PHP_EOL;
     echo C_AMARILLO . "¿Ejecutar? (s/n): " . C_RESET;
@@ -348,7 +401,7 @@ function crearMiddleware(string $dir, string $nombre): array {
     $nombre = ucfirst($nombre);
     $archivo = $dir."/app/Middleware/Middleware{$nombre}.php";
     if (file_exists($archivo)) return [C_AMARILLO."⚠️ Ya existe: Middleware{$nombre}".C_RESET];
-    $c = "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Middleware;\n\nuse App\\Nucleo\\Middleware;\n\nclass Middleware$nombre extends Middleware\n{\n    public function manejar(array \$peticion, callable \$siguiente): mixed\n    {\n        return \$siguiente(\$peticion);\n    }\n}\n";
+    $c = "<?php\ndeclare(strict_types=1);\n\nnamespace App\\Middleware;\n\nuse App\\Nucleo\\Middleware;\nuse App\\Nucleo\\Peticion;\n\nclass Middleware$nombre extends Middleware\n{\n    public function manejar(Peticion \$peticion, callable \$siguiente): mixed\n    {\n        return \$siguiente(\$peticion);\n    }\n}\n";
     file_put_contents($archivo, $c);
     return [C_VERDE."✅ Middleware: Middleware{$nombre}".C_RESET];
 }
@@ -407,22 +460,67 @@ function migrarEstado(string $dir): array {
     $m = glob($dir.'/app/Migraciones/*.php');
     return [C_CYAN."📊 Migraciones: ".C_AMARILLO.count($m).C_RESET];
 }
-
+//-----------------------------------------------------------------
 function respaldarBD(string $dir): array {
     $cfg = require $dir.'/config/base_datos.php';
     @mkdir($dir.'/almacenamiento/backups', 0775, true);
     $f = $dir.'/almacenamiento/backups/backup_'.date('Ymd_His').'.sql';
-    exec("mysqldump -h{$cfg['host']} -u{$cfg['usuario']} ".($cfg['clave']?"-p{$cfg['clave']}":"")." {$cfg['nombre']} > $f 2>/dev/null", $o, $x);
-    return $x===0 ? [C_VERDE."✅ Backup: $f".C_RESET] : [C_ROJO."❌ Error.".C_RESET];
+    
+    $motor = $cfg['motor'] ?? 'mysql';
+    
+    if ($motor === 'pgsql') {
+        // PostgreSQL: usar pg_dump
+        $cmd = ['pg_dump', '-h', $cfg['host'], '-p', (string)($cfg['puerto'] ?? 5432), 
+                '-U', $cfg['usuario'], '-d', $cfg['nombre'], '-f', $f];
+        $cmdStr = implode(' ', array_map('escapeshellarg', $cmd));
+        putenv('PGPASSWORD=' . ($cfg['clave'] ?? ''));
+        exec($cmdStr, $o, $x);
+        putenv('PGPASSWORD');
+    } else {
+        // MySQL: usar mysqldump
+        $cmd = ['mysqldump', '-h', $cfg['host'], '-u', $cfg['usuario']];
+        if (!empty($cfg['clave'])) $cmd[] = '-p' . $cfg['clave'];
+        $cmd[] = $cfg['nombre'];
+        $cmdStr = implode(' ', array_map('escapeshellarg', $cmd)) . ' > ' . escapeshellarg($f) . ' 2>/dev/null';
+        exec($cmdStr, $o, $x);
+    }
+    
+    return $x === 0 ? [C_VERDE."✅ Backup: $f".C_RESET] : [C_ROJO."❌ Error al respaldar.".C_RESET];
 }
 
 function restaurarBD(string $dir, string $f): array {
-    if (!file_exists($f)) return [C_ROJO."❌ No encontrado.".C_RESET];
+    if (!file_exists($f)) return [C_ROJO."❌ No encontrado: $f".C_RESET];
+    
+    $real = realpath($f);
+    $permitido = realpath($dir.'/almacenamiento/backups');
+    if ($real === false || $permitido === false || strpos($real, $permitido) !== 0) {
+        return [C_ROJO."❌ Solo se permiten archivos dentro de almacenamiento/backups/".C_RESET];
+    }
+    
     $cfg = require $dir.'/config/base_datos.php';
-    exec("mysql -h{$cfg['host']} -u{$cfg['usuario']} ".($cfg['clave']?"-p{$cfg['clave']}":"")." {$cfg['nombre']} < $f 2>/dev/null", $o, $x);
-    return $x===0 ? [C_VERDE."✅ Restaurado.".C_RESET] : [C_ROJO."❌ Error.".C_RESET];
+    $motor = $cfg['motor'] ?? 'mysql';
+    
+    if ($motor === 'pgsql') {
+        // PostgreSQL: usar psql
+        $cmd = ['psql', '-h', $cfg['host'], '-p', (string)($cfg['puerto'] ?? 5432),
+                '-U', $cfg['usuario'], '-d', $cfg['nombre'], '-f', $real];
+        $cmdStr = implode(' ', array_map('escapeshellarg', $cmd));
+        putenv('PGPASSWORD=' . ($cfg['clave'] ?? ''));
+        exec($cmdStr, $o, $x);
+        putenv('PGPASSWORD');
+    } else {
+        // MySQL: usar mysql
+        $cmd = ['mysql', '-h', $cfg['host'], '-u', $cfg['usuario']];
+        if (!empty($cfg['clave'])) $cmd[] = '-p' . $cfg['clave'];
+        $cmd[] = $cfg['nombre'];
+        $cmdStr = implode(' ', array_map('escapeshellarg', $cmd)) . ' < ' . escapeshellarg($real) . ' 2>/dev/null';
+        exec($cmdStr, $o, $x);
+    }
+    
+    return $x === 0 ? [C_VERDE."✅ Restaurado.".C_RESET] : [C_ROJO."❌ Error al restaurar.".C_RESET];
 }
 
+//________________________________________________________
 function cacheEstado(string $dir): array {
     $a = glob($dir.'/almacenamiento/cache/*'); $t = count($a); $s = 0;
     foreach ($a as $f) $s += filesize($f);
@@ -464,15 +562,38 @@ function generarClave(string $dir): array {
 }
 
 function limpiarLogs(string $dir): array {
-    $a = glob($dir.'/almacenamiento/logs/*.log'); foreach ($a as $f) unlink($f);
+    $logDir = $dir.'/almacenamiento/logs';
+    if (!is_dir($logDir)) return [C_AMARILLO."⚠️ Directorio no existe.".C_RESET];
+    $a = glob($logDir . '/*.log') ?: [];
+    foreach ($a as $f) @unlink($f);
     return [C_VERDE."✅ Logs limpiados (".count($a).")".C_RESET];
 }
 
 function verLogs(string $dir, string $n): array {
-    $f = $dir.'/almacenamiento/logs/app.log';
-    if (!file_exists($f)) return [C_AMARILLO."⚠️ Sin logs.".C_RESET];
-    $l = array_slice(file($f), -intval($n));
-    return array_merge([C_CYAN."📋 Log:".C_RESET,""], array_map(fn($x)=> "   ".trim($x), $l));
+    $n = max(1, min(500, (int) $n));
+    $logDir = $dir.'/almacenamiento/logs';
+    $hoy = date('Y-m-d');
+    
+    $archivos = [
+        $logDir . '/error-' . $hoy . '.log',
+        $logDir . '/acceso-' . $hoy . '.log'
+    ];
+    
+    $encontrados = array_filter($archivos, 'file_exists');
+    if (empty($encontrados)) {
+        $encontrados = glob($logDir . '/*.log') ?: [];
+    }
+    
+    if (empty($encontrados)) return [C_AMARILLO."⚠️ Sin logs.".C_RESET];
+    
+    $r = [C_CYAN."📋 Logs recientes:".C_RESET, ""];
+    foreach ($encontrados as $f) {
+        $r[] = C_MORADO."  📁 " . basename($f).C_RESET;
+        $l = array_slice(file($f), -$n);
+        foreach ($l as $linea) $r[] = "   " . trim($linea);
+        $r[] = "";
+    }
+    return $r;
 }
 
 function crearUsuario(): array {
@@ -486,7 +607,7 @@ function crearUsuario(): array {
     $usuario->nombre = $n;
     $usuario->apellido = $a;
     $usuario->email = $e;
-    $usuario->password = password_hash($p, PASSWORD_BCRYPT);
+    $usuario->password = password_hash($p, PASSWORD_BCRYPT, ['cost' => 12]);
     $usuario->edad = $ed;
     $usuario->rol = 'usuario';
     $usuario->guardar();
@@ -509,7 +630,7 @@ function generarToken(string $e): array {
         return [C_ROJO."❌ Usuario no encontrado: $e".C_RESET];
     }
     $t = bin2hex(random_bytes(32));
-    $usuario->api_token = $t;
+    $usuario->api_token = hash('sha256', $t);
     $usuario->guardar();
     return [C_VERDE."✅ Token: $t".C_RESET];
 }
@@ -523,4 +644,5 @@ function cambiarEntorno(string $dir, ?string $e): array {
     if (!$e) { $c = require $dir.'/config/aplicacion.php'; return [C_CYAN."Entorno: ".C_AMARILLO.($c['entorno']??'N/A').C_RESET]; }
     file_put_contents($dir.'/config/aplicacion.php', preg_replace("/'entorno'\s*=>\s*'[^']*'/", "'entorno' => '$e'", file_get_contents($dir.'/config/aplicacion.php')));
     return [C_VERDE."✅ Entorno → $e".C_RESET];
+}    return $x === 0 ? [C_VERDE."✅ Restaurado.".C_RESET] : [C_ROJO."❌ Error al restaurar.".C_RESET];
 }
