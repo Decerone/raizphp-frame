@@ -129,7 +129,14 @@ class ConstructorConsulta
     {
         $this->limite(1);
         $resultados = $this->obtener();
-        return $resultados[0] ?? null;
+        if (empty($resultados)) return null;
+        $primero = $resultados[0];
+        // Si viene de caché (array), reconstruir el modelo
+        if (is_array($primero)) {
+            $clase = $this->claseModelo;
+            return new $clase($primero);
+        }
+        return $primero;
     }
     
     public function insertar(array $datos): int|string
@@ -209,4 +216,4 @@ class ConstructorConsulta
         if ($this->clausulas['desplazamiento'] !== null) $sql .= ' OFFSET ' . $this->clausulas['desplazamiento'];
         return $sql;
     }
-}
+}}
