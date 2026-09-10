@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $titulo ?? 'Panel' ?> - RaízPHP</title>
-    <link rel="stylesheet" href="<?= $urlBase ?>/estilos/raiz.css">
+    <link rel="stylesheet" href="<?= $urlBase ?>/estilos/celaje.css">
     <link rel="stylesheet" href="<?= $urlBase ?>/estilos/admin.css">
 </head>
 <body>
