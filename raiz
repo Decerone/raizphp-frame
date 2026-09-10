@@ -6,9 +6,7 @@ declare(strict_types=1);
 $directorioRaiz = __DIR__;
 require_once $directorioRaiz . '/app/Nucleo/Autocargador.php';
 App\Nucleo\Autocargador::registrar();
-require_once $directorioRaiz . '/app/Nucleo/Aplicacion.php';
 
-$app = new App\Nucleo\Aplicacion($directorioRaiz);
 $comando = $argv[1] ?? 'ayuda';
 $subcomando = $argv[2] ?? null;
 $argumento = $argv[3] ?? null;
@@ -21,6 +19,22 @@ define('C_MORADO', "\033[35m");
 define('C_CYAN', "\033[36m");
 define('C_RESET', "\033[0m");
 define('C_NEGRITA', "\033[1m");
+
+// ==================== COMANDOS QUE NO REQUIEREN CONFIG ====================
+$comandosSinConfig = ['ayuda', '--help', '-h', 'version', '--version', '-v'];
+
+// Solo cargar Aplicacion si el comando la necesita
+if (!in_array($comando, $comandosSinConfig, true)) {
+    require_once $directorioRaiz . '/app/Nucleo/Aplicacion.php';
+    try {
+        $app = new App\Nucleo\Aplicacion($directorioRaiz);
+    } catch (\Throwable $e) {
+        echo PHP_EOL . C_ROJO . "❌ Error: " . $e->getMessage() . C_RESET . PHP_EOL;
+        echo C_AMARILLO . "   Ejecuta el instalador: public/instalar.php" . C_RESET . PHP_EOL;
+        echo C_AMARILLO . "   O copia: config/*.ejemplo.php → config/*.php" . C_RESET . PHP_EOL . PHP_EOL;
+        exit(1);
+    }
+}
 
 echo PHP_EOL . C_VERDE . C_NEGRITA;
 echo "  🌱  RaízPHP CLI v2.1" . PHP_EOL;
@@ -238,22 +252,14 @@ function mostrarVersion(string $dir): array {
     ];
 }
 
-/**
- * D6: Solo permite UNA sentencia SQL, sin `;` extra
- */
 function validarSentenciaUnica(string $sql): bool
 {
     $sql = trim($sql);
-    // Quitar comentarios de línea
     $sql = preg_replace('/--.*$/m', '', $sql);
     $sql = preg_replace('/#.*$/m', '', $sql);
     $sql = trim($sql);
-    
-    // Contar puntos y coma (debe haber 0 o 1 al final)
     $sinPuntoComaFinal = rtrim($sql, "; \t\n\r");
-    if (strpos($sinPuntoComaFinal, ';') !== false) {
-        return false; // Hay más de una sentencia
-    }
+    if (strpos($sinPuntoComaFinal, ';') !== false) return false;
     return true;
 }
 
@@ -349,7 +355,7 @@ function cargarSQL(string $dir, string $nombre, string $archivo): array
     }
     $sql = file_get_contents($archivo);
     if (contieneComandoPeligroso($sql)) {
-        return [C_ROJO."❌ El archivo contiene comandos no permitidos (DROP DATABASE, GRANT, etc.).".C_RESET];
+        return [C_ROJO."❌ El archivo contiene comandos no permitidos.".C_RESET];
     }
     echo C_AMARILLO . "⚠️  Cargar: " . C_CYAN . $nombre . C_RESET . PHP_EOL;
     echo C_AMARILLO . "   Archivo: " . basename($archivo) . " (" . strlen($sql) . " bytes)" . C_RESET . PHP_EOL;
@@ -460,7 +466,7 @@ function migrarEstado(string $dir): array {
     $m = glob($dir.'/app/Migraciones/*.php');
     return [C_CYAN."📊 Migraciones: ".C_AMARILLO.count($m).C_RESET];
 }
-//-----------------------------------------------------------------
+
 function respaldarBD(string $dir): array {
     $cfg = require $dir.'/config/base_datos.php';
     @mkdir($dir.'/almacenamiento/backups', 0775, true);
@@ -469,15 +475,12 @@ function respaldarBD(string $dir): array {
     $motor = $cfg['motor'] ?? 'mysql';
     
     if ($motor === 'pgsql') {
-        // PostgreSQL: usar pg_dump
-        $cmd = ['pg_dump', '-h', $cfg['host'], '-p', (string)($cfg['puerto'] ?? 5432), 
-                '-U', $cfg['usuario'], '-d', $cfg['nombre'], '-f', $f];
+        $cmd = ['pg_dump', '-h', $cfg['host'], '-p', (string)($cfg['puerto'] ?? 5432), '-U', $cfg['usuario'], '-d', $cfg['nombre'], '-f', $f];
         $cmdStr = implode(' ', array_map('escapeshellarg', $cmd));
         putenv('PGPASSWORD=' . ($cfg['clave'] ?? ''));
         exec($cmdStr, $o, $x);
         putenv('PGPASSWORD');
     } else {
-        // MySQL: usar mysqldump
         $cmd = ['mysqldump', '-h', $cfg['host'], '-u', $cfg['usuario']];
         if (!empty($cfg['clave'])) $cmd[] = '-p' . $cfg['clave'];
         $cmd[] = $cfg['nombre'];
@@ -501,15 +504,12 @@ function restaurarBD(string $dir, string $f): array {
     $motor = $cfg['motor'] ?? 'mysql';
     
     if ($motor === 'pgsql') {
-        // PostgreSQL: usar psql
-        $cmd = ['psql', '-h', $cfg['host'], '-p', (string)($cfg['puerto'] ?? 5432),
-                '-U', $cfg['usuario'], '-d', $cfg['nombre'], '-f', $real];
+        $cmd = ['psql', '-h', $cfg['host'], '-p', (string)($cfg['puerto'] ?? 5432), '-U', $cfg['usuario'], '-d', $cfg['nombre'], '-f', $real];
         $cmdStr = implode(' ', array_map('escapeshellarg', $cmd));
         putenv('PGPASSWORD=' . ($cfg['clave'] ?? ''));
         exec($cmdStr, $o, $x);
         putenv('PGPASSWORD');
     } else {
-        // MySQL: usar mysql
         $cmd = ['mysql', '-h', $cfg['host'], '-u', $cfg['usuario']];
         if (!empty($cfg['clave'])) $cmd[] = '-p' . $cfg['clave'];
         $cmd[] = $cfg['nombre'];
@@ -520,7 +520,6 @@ function restaurarBD(string $dir, string $f): array {
     return $x === 0 ? [C_VERDE."✅ Restaurado.".C_RESET] : [C_ROJO."❌ Error al restaurar.".C_RESET];
 }
 
-//________________________________________________________
 function cacheEstado(string $dir): array {
     $a = glob($dir.'/almacenamiento/cache/*'); $t = count($a); $s = 0;
     foreach ($a as $f) $s += filesize($f);
@@ -639,7 +638,6 @@ function infoProyecto(string $dir): array {
     $c = require $dir.'/config/aplicacion.php';
     return [C_CYAN."📋 Proyecto:".C_RESET,"   Nombre: ".C_AMARILLO.($c['nombre']??'N/A').C_RESET,"   Entorno: ".C_AMARILLO.($c['entorno']??'N/A').C_RESET,"   PHP: ".C_AMARILLO.PHP_VERSION.C_RESET];
 }
-
 
 function cambiarEntorno(string $dir, ?string $e): array {
     if (!$e) {
