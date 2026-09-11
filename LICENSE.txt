@@ -5,6 +5,16 @@
 
             Copyright (c) 2026 Decerone - Costa Rica
 
+================================================================================
+                              NOTA IMPORTANTE
+================================================================================
+
+Esta licencia NO es aprobada por la FSF (Free Software Foundation) ni por
+la OSI (Open Source Initiative). Es una licencia propia que permite uso
+comercial, modificación y distribución, siempre que se mantenga la
+atribución en documentación y en sitios web públicos.
+
+
             Copyright (c) 2026 Decerone - Costa Rica
 
 ================================================================================
