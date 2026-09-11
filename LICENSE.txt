@@ -1,8 +1,9 @@
 ================================================================================
                     🌱 LICENCIA RAÍZPHP v1.0
-              Basada en Apache License 2.0
-                    Software Libre
+        Licencia propia con atribución obligatoria
 ================================================================================
+
+            Copyright (c) 2026 Decerone - Costa Rica
 
             Copyright (c) 2026 Decerone - Costa Rica
 
